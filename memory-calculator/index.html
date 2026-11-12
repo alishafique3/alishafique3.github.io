@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Memory Calculator — Ali Shafique</title>
-<meta name="description" content="Transformer VRAM calculator for inference and training. Estimate GPU memory footprint across precision, parallelism, and KV cache." />
+<title>Memory Calculator</title>
 <style>
   :root {
-    --bg: #f6f7f9;
+    --bg: #ffffff;
     --card: #ffffff;
     --fg: #0f172a;
     --fg-2: #334155;
@@ -41,34 +40,43 @@
   html, body {
     margin: 0; padding: 0;
     background: var(--bg); color: var(--fg);
-    -webkit-font-smoothing: antialiased;
-  }
-  /* Calculator gets its own font stack; the site nav above keeps Lato from stylesheet.css */
-  .mc-container {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 14px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
   }
   a { color: var(--accent); text-decoration: none; }
   a:hover { color: var(--accent-strong); text-decoration: underline; }
   code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 12.5px; }
 
-  /* Scope calculator layout to .mc-container so it doesn't fight the site nav */
-  .mc-container { max-width: 1120px; margin: 0 auto; padding: 32px 24px 64px; }
+  .container { max-width: 1120px; margin: 0 auto; padding: 32px 24px 64px; position: relative; }
 
-  .page-head { margin-bottom: 24px; text-align: center; }
-  .page-head h1 { font-size: 28px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.015em; color: var(--fg); }
-  .page-head p { margin: 0 auto; color: var(--muted); font-size: 15px; max-width: 640px; }
+  .gh-link {
+    position: absolute; top: 24px; right: 24px;
+    color: var(--fg-2); display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: 999px; font-size: 13px; font-weight: 500;
+    transition: all 0.15s ease; text-decoration: none;
+  }
+  .gh-link:hover {
+    color: var(--fg); border-color: var(--border-strong);
+    background: #f8fafc;
+  }
+  .gh-link svg { display: block; }
 
-  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+  .page-head { margin-bottom: 28px; text-align: center; }
+  .page-head h1 { font-size: 36px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; color: var(--fg); }
+  .page-head p { margin: 0 auto; color: var(--muted); font-size: 17px; max-width: 680px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
+  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; gap: 20px; } }
 
   .panel {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 20px;
+    background: transparent; border: 0;
+    border-radius: 0; padding: 8px 0 20px;
   }
-  .panel + .panel { margin-top: 18px; }
+  .panel + .panel { margin-top: 20px; }
   .panel h2 {
-    font-size: 16px; font-weight: 600; margin: 0 0 16px;
+    font-size: 20px; font-weight: 600; margin: 0 0 16px;
     color: var(--fg);
   }
 
@@ -126,7 +134,6 @@
   /* Results */
   .result-head {
     padding: 0 2px 14px;
-    border-bottom: 1px solid var(--border);
     margin-bottom: 14px;
     display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   }
@@ -204,7 +211,12 @@
 </style>
 </head>
 <body>
-<div class="mc-container">
+<div class="container">
+
+  <a class="gh-link" href="https://github.com/alishafique3/LLM-Infra-from-scratch" target="_blank" rel="noreferrer" title="View source on GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 .5C5.73.5.67 5.56.67 11.83c0 5.02 3.25 9.28 7.77 10.78.57.1.78-.25.78-.55v-2.05c-3.17.69-3.84-1.36-3.84-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.52-2.53-.29-5.2-1.27-5.2-5.63 0-1.24.44-2.26 1.17-3.06-.12-.29-.51-1.44.11-3 0 0 .96-.31 3.15 1.17a10.9 10.9 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.56.23 2.71.11 3 .73.8 1.17 1.82 1.17 3.06 0 4.37-2.68 5.33-5.22 5.61.41.35.78 1.05.78 2.12v3.15c0 .31.21.66.79.55 4.52-1.5 7.77-5.76 7.77-10.78C23.33 5.56 18.27.5 12 .5z"/></svg>
+    <span>LLM-Infra-from-scratch</span>
+  </a>
 
   <div class="page-head">
     <h1>Memory Calculator</h1>
@@ -215,7 +227,7 @@
     <!-- LEFT: INPUTS -->
     <div>
       <div class="panel">
-        <h2>Running Parameters</h2>
+        <h2>Configuration</h2>
 
         <!-- Mode -->
         <div class="chips">
@@ -393,7 +405,7 @@
   </div>
 
   <footer>
-    Formulas derived from an MIT-licensed open-source estimator. Activation accounting follows
+    Formulas derived from an MIT-licensed open-source <a href="https://github.com/furiousteabag/vram-calculator/blob/main/app/_lib/index.ts" target="_blank" rel="noreferrer">estimator</a>. Activation accounting follows
     <a href="https://arxiv.org/abs/2205.05198" target="_blank" rel="noreferrer">arxiv.org/abs/2205.05198</a>.
     Estimates — real allocations vary with framework, kernel, and memory fragmentation.
   </footer>
@@ -693,11 +705,37 @@ function niceTicks(max, targetCount = 5) {
   return ticks;
 }
 
+/* Per-rect requestAnimationFrame tween state */
+const _chartTweens = new WeakMap();
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function tweenRect(rect, targetX, targetW, onDone) {
+  const prev = _chartTweens.get(rect);
+  if (prev) cancelAnimationFrame(prev);
+  const fromX = Number(rect.getAttribute("x")) || 0;
+  const fromW = Number(rect.getAttribute("width")) || 0;
+  if (Math.abs(fromX - targetX) < 0.1 && Math.abs(fromW - targetW) < 0.1) {
+    rect.setAttribute("x", targetX); rect.setAttribute("width", targetW);
+    if (onDone) onDone();
+    return;
+  }
+  const t0 = performance.now();
+  const dur = 420;
+  (function step(t) {
+    const p = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - p, 3);  // easeOutCubic
+    rect.setAttribute("x", (fromX + (targetX - fromX) * e).toFixed(2));
+    rect.setAttribute("width", Math.max(0, fromW + (targetW - fromW) * e).toFixed(2));
+    if (p < 1) _chartTweens.set(rect, requestAnimationFrame(step));
+    else { _chartTweens.delete(rect); if (onDone) onDone(); }
+  })(t0);
+}
+
 function renderChart(items, gpu0, gpuOther) {
   const n = state.numGPUs;
   const chart = $("chart");
 
-  // Build per-GPU totals for each row
+  // Per-GPU totals
   const perGpu = [];
   for (let i = 0; i < n; i++) perGpu.push(i === 0 ? gpu0 : gpuOther);
   const dataMax = Math.max(...perGpu, 1);
@@ -706,8 +744,8 @@ function renderChart(items, gpu0, gpuOther) {
 
   // SVG coord system
   const W  = 540;
-  const ml = n > 1 ? 56 : 28;        // room for Y label + GPU index text
-  const mr = 100;                     // room for per-GPU totals on the right
+  const ml = n > 1 ? 56 : 28;
+  const mr = 100;
   const mt = 12;
   const mb = 34;
   const rowH   = n > 1 ? 30 : 36;
@@ -716,66 +754,112 @@ function renderChart(items, gpu0, gpuOther) {
   const H  = mt + chartH + mb;
   const plotW = W - ml - mr;
   const scaleX = v => (v / niceMax) * plotW;
-
   const limit = state.unit === "MiB" ? state.gpuVramGiB * 1024 : state.gpuVramGiB;
 
-  const parts = [];
-  parts.push(`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`);
+  // (Re)build SVG skeleton if dimensions changed
+  let svg = chart.querySelector("svg");
+  const vb = `0 0 ${W} ${H}`;
+  if (!svg || svg.getAttribute("viewBox") !== vb) {
+    chart.innerHTML =
+      `<svg viewBox="${vb}" preserveAspectRatio="xMidYMid meet">` +
+        `<g class="bg"></g>` +
+        `<g class="bars"></g>` +
+        `<g class="fg"></g>` +
+      `</svg>`;
+    svg = chart.querySelector("svg");
+  }
+  const bg = svg.querySelector(".bg");
+  const bars = svg.querySelector(".bars");
+  const fg = svg.querySelector(".fg");
 
-  // Rotated Y axis label (only when multiple GPUs)
+  // Background layer: Y label, gridlines, GPU index labels
+  const bgParts = [];
   if (n > 1) {
     const cy = mt + chartH / 2;
-    parts.push(`<text class="y-label" x="10" y="${cy}" transform="rotate(-90 10 ${cy})" text-anchor="middle">GPU Index</text>`);
+    bgParts.push(`<text class="y-label" x="10" y="${cy}" transform="rotate(-90 10 ${cy})" text-anchor="middle">GPU Index</text>`);
   }
-
-  // Vertical gridlines at each tick
   ticks.forEach(t => {
     const x = ml + scaleX(t);
-    parts.push(`<line class="grid" x1="${x}" y1="${mt}" x2="${x}" y2="${mt + chartH}" />`);
+    bgParts.push(`<line class="grid" x1="${x}" y1="${mt}" x2="${x}" y2="${mt + chartH}" />`);
   });
-
-  // Horizontal grid top/bottom of plot area
-  parts.push(`<line class="grid" x1="${ml}" y1="${mt}" x2="${ml + plotW}" y2="${mt}" />`);
-  parts.push(`<line class="grid" x1="${ml}" y1="${mt + chartH}" x2="${ml + plotW}" y2="${mt + chartH}" />`);
-
-  // Per-GPU rows (GPU 0 at bottom)
-  for (let gpuIdx = 0; gpuIdx < n; gpuIdx++) {
-    const rowFromTop = n - 1 - gpuIdx;
-    const y = mt + rowFromTop * (rowH + rowGap);
-
-    if (n > 1) {
-      parts.push(`<text class="gpu-idx" x="${ml - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${gpuIdx}</text>`);
+  bgParts.push(`<line class="grid" x1="${ml}" y1="${mt}" x2="${ml + plotW}" y2="${mt}" />`);
+  bgParts.push(`<line class="grid" x1="${ml}" y1="${mt + chartH}" x2="${ml + plotW}" y2="${mt + chartH}" />`);
+  if (n > 1) {
+    for (let gpuIdx = 0; gpuIdx < n; gpuIdx++) {
+      const y = mt + (n - 1 - gpuIdx) * (rowH + rowGap);
+      bgParts.push(`<text class="gpu-idx" x="${ml - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${gpuIdx}</text>`);
     }
+  }
+  bg.innerHTML = bgParts.join("");
 
+  // Bars layer: reconcile rects by key, tween x/width
+  const targets = [];
+  for (let gpuIdx = 0; gpuIdx < n; gpuIdx++) {
+    const y = mt + (n - 1 - gpuIdx) * (rowH + rowGap);
     let cum = 0;
     items.forEach(([k, v]) => {
       const vv = (k === "outputs" && gpuIdx !== 0) ? 0 : v;
       if (vv <= 0) return;
-      const x = ml + scaleX(cum);
-      const w = scaleX(vv);
-      parts.push(`<rect class="seg" data-key="${k}-${gpuIdx}" x="${x}" y="${y}" width="${w.toFixed(2)}" height="${rowH}" fill="${COLOR[k]}"><title>${LABEL[k]}: ${fmt(vv)} ${state.unit}</title></rect>`);
+      targets.push({
+        id: `${k}-${gpuIdx}`, k, y, rowH, vv,
+        x: ml + scaleX(cum),
+        w: scaleX(vv),
+      });
       cum += vv;
     });
-
-    // Per-GPU total on the right
-    const total = perGpu[gpuIdx];
-    const over = state.gpuVramGiB > 0 && total > limit;
-    parts.push(`<text class="gpu-total ${over ? 'over' : ''}" x="${ml + plotW + 6}" y="${y + rowH / 2 + 4}">${fmt(total)} ${state.unit}</text>`);
   }
+  const targetIds = new Set(targets.map(t => t.id));
+  const existing = new Map();
+  Array.from(bars.children).forEach(el => existing.set(el.getAttribute("data-key"), el));
 
-  // X axis line
-  const axisY = mt + chartH;
-  parts.push(`<line class="axis" x1="${ml}" y1="${axisY}" x2="${ml + plotW}" y2="${axisY}" />`);
-
-  // X axis ticks + labels
-  ticks.forEach(t => {
-    const x = ml + scaleX(t);
-    parts.push(`<line class="tick" x1="${x}" y1="${axisY}" x2="${x}" y2="${axisY + 4}" />`);
-    parts.push(`<text class="tick-label" x="${x}" y="${axisY + 18}" text-anchor="middle">${fmt(t)}</text>`);
+  // Fade out and remove rects no longer in the data
+  existing.forEach((rect, id) => {
+    if (!targetIds.has(id)) {
+      const fromX = Number(rect.getAttribute("x")) || 0;
+      tweenRect(rect, fromX, 0, () => rect.remove());
+    }
   });
 
-  parts.push(`</svg>`);
-  chart.innerHTML = parts.join("");
+  // Create or update each target rect
+  targets.forEach(t => {
+    let rect = existing.get(t.id);
+    if (!rect) {
+      rect = document.createElementNS(SVG_NS, "rect");
+      rect.setAttribute("class", "seg");
+      rect.setAttribute("data-key", t.id);
+      rect.setAttribute("x", t.x);
+      rect.setAttribute("y", t.y);
+      rect.setAttribute("width", 0);
+      rect.setAttribute("height", t.rowH);
+      rect.setAttribute("fill", COLOR[t.k]);
+      const title = document.createElementNS(SVG_NS, "title");
+      rect.appendChild(title);
+      bars.appendChild(rect);
+    }
+    rect.setAttribute("y", t.y);
+    rect.setAttribute("height", t.rowH);
+    rect.setAttribute("fill", COLOR[t.k]);
+    const title = rect.querySelector("title");
+    if (title) title.textContent = `${LABEL[t.k]}: ${fmt(t.vv)} ${state.unit}`;
+    tweenRect(rect, t.x, t.w);
+  });
+
+  // Foreground: axis line, ticks, per-GPU totals
+  const fgParts = [];
+  const axisY = mt + chartH;
+  fgParts.push(`<line class="axis" x1="${ml}" y1="${axisY}" x2="${ml + plotW}" y2="${axisY}" />`);
+  ticks.forEach(t => {
+    const x = ml + scaleX(t);
+    fgParts.push(`<line class="tick" x1="${x}" y1="${axisY}" x2="${x}" y2="${axisY + 4}" />`);
+    fgParts.push(`<text class="tick-label" x="${x}" y="${axisY + 18}" text-anchor="middle">${fmt(t)}</text>`);
+  });
+  for (let gpuIdx = 0; gpuIdx < n; gpuIdx++) {
+    const y = mt + (n - 1 - gpuIdx) * (rowH + rowGap);
+    const total = perGpu[gpuIdx];
+    const over = state.gpuVramGiB > 0 && total > limit;
+    fgParts.push(`<text class="gpu-total ${over ? 'over' : ''}" x="${ml + plotW + 6}" y="${y + rowH / 2 + 4}">${fmt(total)} ${state.unit}</text>`);
+  }
+  fg.innerHTML = fgParts.join("");
 }
 
 function renderLegend(items) {
