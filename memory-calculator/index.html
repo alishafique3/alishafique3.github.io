@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Memory Calculator — Ali Shafique</title>
+<meta name="description" content="Transformer VRAM calculator for inference and training. Estimate GPU memory footprint across precision, parallelism, and KV cache." />
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --fg: #0f172a;
+    --fg-2: #334155;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --accent: #4f46e5;            /* indigo-600 */
+    --accent-weak: #eef2ff;       /* indigo-50 */
+    --accent-strong: #4338ca;     /* indigo-700 */
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --c-cuda:   #94a3b8;          /* soft slate */
+    --c-params: #8b5cf6;          /* vibrant violet */
+    --c-act:    #06b6d4;          /* electric cyan */
+    --c-kv:     #0ea5e9;          /* sky blue */
+    --c-grad:   #ec4899;          /* hot pink */
+    --c-m1:     #f59e0b;          /* warm amber */
+    --c-m2:     #f97316;          /* zesty orange */
+    --c-out:    #10b981;          /* fresh emerald */
+
+    --g-cuda:   linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    --g-params: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+    --g-act:    linear-gradient(135deg, #22d3ee 0%, #0891b2 100%);
+    --g-kv:     linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+    --g-grad:   linear-gradient(135deg, #f472b6 0%, #db2777 100%);
+    --g-m1:     linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+    --g-m2:     linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+    --g-out:    linear-gradient(135deg, #34d399 0%, #059669 100%);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Calculator gets its own font stack; the site nav above keeps Lato from stylesheet.css */
+  .mc-container {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; line-height: 1.55;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-strong); text-decoration: underline; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 12.5px; }
+
+  /* Scope calculator layout to .mc-container so it doesn't fight the site nav */
+  .mc-container { max-width: 1120px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  .page-head { margin-bottom: 24px; text-align: center; }
+  .page-head h1 { font-size: 28px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.015em; color: var(--fg); }
+  .page-head p { margin: 0 auto; color: var(--muted); font-size: 15px; max-width: 640px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px;
+  }
+  .panel + .panel { margin-top: 18px; }
+  .panel h2 {
+    font-size: 16px; font-weight: 600; margin: 0 0 16px;
+    color: var(--fg);
+  }
+
+  /* Chip-style controls */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
+  .chip-label { font-size: 13px; color: var(--fg-2); margin-right: 6px; font-weight: 500; }
+  .chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 5px 12px; border-radius: 6px; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--border-strong); color: var(--fg-2); background: var(--card);
+    transition: all 0.12s ease; user-select: none; line-height: 1.3;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-weak); }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Fields */
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .row > .field { flex: 1; min-width: 0; }
+  .field { display: flex; flex-direction: column; }
+  .field label { font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+  .field input, .field select {
+    font: inherit; font-family: var(--mono); font-size: 13.5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: var(--card); color: var(--fg); width: 100%;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-weak);
+  }
+  .field .helper { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .field .helper.err { color: #dc2626; }
+
+  /* Switch */
+  .switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--fg-2); }
+  .switch input { appearance: none; width: 34px; height: 18px; background: #cbd5e1; border-radius: 999px; position: relative; cursor: pointer; transition: background 0.15s; }
+  .switch input:checked { background: var(--accent); }
+  .switch input::before {
+    content: ""; position: absolute; width: 14px; height: 14px; background: #fff;
+    border-radius: 50%; top: 2px; left: 2px; transition: transform 0.15s ease;
+  }
+  .switch input:checked::before { transform: translateX(16px); }
+
+  .help-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%; color: var(--muted);
+    cursor: help; font-size: 11px; font-weight: 700;
+    border: 1px solid var(--border-strong); background: var(--card);
+  }
+  .help-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+  .center-para { text-align: left; color: var(--fg-2); font-size: 13px; margin: 0 0 14px; }
+
+  /* Results */
+  .result-head {
+    padding: 0 2px 14px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 14px;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  }
+  .result-head .k { font-size: 12px; color: var(--accent-strong); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .result-head .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .result-head .v { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--accent-strong); transition: color 0.2s ease; }
+  .result-head .v .u { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .result-head.over .k { color: #b91c1c; }
+  .result-head.over .v { color: #dc2626; }
+  .result-head.over .sub { color: #b91c1c; }
+
+  /* Chart (horizontal stacked bar) */
+  /* Plot */
+  .chart-wrap { margin-bottom: 14px; width: 100%; overflow: hidden; }
+  .chart-wrap svg { width: 100%; height: auto; display: block; font-family: inherit; }
+  .chart-wrap svg .grid { stroke: var(--border); stroke-dasharray: 3 3; stroke-width: 1; }
+  .chart-wrap svg .axis { stroke: var(--border-strong); stroke-width: 1; }
+  .chart-wrap svg .tick { stroke: var(--border-strong); stroke-width: 1; }
+  .chart-wrap svg .tick-label { font-size: 11px; fill: var(--muted); }
+  .chart-wrap svg .y-label { font-size: 12px; fill: var(--muted); }
+  .chart-wrap svg .gpu-idx { font-size: 12px; fill: var(--fg-2); font-family: var(--mono); }
+  .chart-wrap svg .seg { transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+  .chart-wrap svg .gpu-total { font-size: 11px; font-family: var(--mono); fill: var(--fg); }
+  .chart-wrap svg .gpu-total.over { fill: #dc2626; font-weight: 700; }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: flex-start;
+    padding: 10px 2px 14px; margin-bottom: 10px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .legend-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--fg-2);
+  }
+  .legend-sw {
+    width: 12px; height: 12px; border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  /* Legend/result list */
+  .result-list { list-style: none; padding: 0; margin: 0; }
+  .result-list li {
+    padding: 10px 0; border-bottom: 1px dashed var(--border);
+    font-size: 13.5px;
+  }
+  .result-list li:last-child { border-bottom: 0; }
+  .result-list .primary {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 500; color: var(--fg);
+  }
+  .result-list .primary .dot {
+    width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  }
+  .result-list .primary .num {
+    margin-left: auto; font-family: var(--mono); font-weight: 600;
+    color: var(--fg);
+    display: flex; flex-direction: column; align-items: flex-end;
+    line-height: 1.2;
+  }
+  .result-list .primary .num .num-val { display: inline-block; min-width: 1ch; }
+  .result-list .primary .num .num-sub {
+    font-size: 10.5px; font-weight: 500; color: var(--muted);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    letter-spacing: 0.02em; margin-top: 1px;
+  }
+  .result-list .secondary { font-size: 12px; color: var(--muted); margin-top: 4px; padding-left: 18px; }
+
+  footer {
+    margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border);
+    text-align: center; font-size: 12.5px; color: var(--muted);
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="mc-container">
+
+  <div class="page-head">
+    <h1>Memory Calculator</h1>
+    <p>Estimate VRAM footprint for transformer models during inference and training.</p>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT: INPUTS -->
+    <div>
+      <div class="panel">
+        <h2>Running Parameters</h2>
+
+        <!-- Mode -->
+        <div class="chips">
+          <span class="chip active" id="chip-training">Training</span>
+          <span class="chip" id="chip-inference">Inference</span>
+        </div>
+
+        <!-- Precision (training) -->
+        <div class="chips" id="prec-training">
+          <span class="chip-label">Precision:</span>
+          <span class="chip active" data-tprec="mixed">mixed</span>
+          <span class="chip" data-tprec="full">full (fp32)</span>
+          <span class="help-icon" title="Mixed precision keeps fp32 master weights alongside fp16/bf16 working copy. Activations stored in half precision.">?</span>
+        </div>
+
+        <!-- Precision (inference) -->
+        <div class="chips" id="prec-inference" style="display:none;">
+          <span class="chip-label">Precision:</span>
+          <span class="chip active" data-prec="half">fp16/bf16</span>
+          <span class="chip" data-prec="full">fp32</span>
+        </div>
+
+        <!-- Optimizer -->
+        <div class="chips" id="opt-row">
+          <span class="chip-label">Optimizer:</span>
+          <span class="chip active" data-opt="Adam">Adam</span>
+          <span class="chip" data-opt="SGD">SGD</span>
+          <label class="switch" id="sgd-momentum-wrap" style="display:none;">
+            <input type="checkbox" id="sgd-momentum" checked /> momentum
+          </label>
+        </div>
+
+        <!-- Sequence / Batch -->
+        <div class="row">
+          <div class="field">
+            <label for="seq">Sequence Length</label>
+            <input type="number" id="seq" value="512" min="0" />
+            <div class="helper err" id="seq-err" style="display:none;">Must be greater than zero.</div>
+          </div>
+          <div class="field">
+            <label for="batch" id="batch-label">Batch Size</label>
+            <input type="number" id="batch" value="4" min="0" />
+            <div class="helper err" id="batch-err" style="display:none;">Must be greater than zero.</div>
+          </div>
+        </div>
+
+        <!-- GPUs + Display Unit -->
+        <div class="row">
+          <div class="field">
+            <label for="gpus">Number of GPUs</label>
+            <input type="number" id="gpus" value="1" min="0" />
+            <div class="helper err" id="gpus-err" style="display:none;">Must be greater than zero.</div>
+          </div>
+          <div class="field">
+            <label>Display Unit</label>
+            <div class="chips" style="margin:0;">
+              <span class="chip active" data-unit="MiB">MiB</span>
+              <span class="chip" data-unit="GiB">GiB</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPU VRAM capacity -->
+        <div class="row">
+          <div class="field">
+            <label for="gpuVram">GPU VRAM (GiB)</label>
+            <input type="number" id="gpuVram" value="80" min="0" step="1" />
+            <div class="helper">Total usage turns red when it exceeds this limit.</div>
+          </div>
+        </div>
+
+        <div class="chips" id="fsdp-row" style="display:none;">
+          <span class="chip-label">Parallelism:</span>
+          <span class="chip" data-par="ddp">DDP</span>
+          <span class="chip" data-par="zero1">ZeRO-1</span>
+          <span class="chip" data-par="zero2">ZeRO-2</span>
+          <span class="chip active" data-par="zero3">ZeRO-3 / FSDP</span>
+          <span class="help-icon" title="DDP: full replica on each GPU. ZeRO-1: shard optimizer states. ZeRO-2: shard optimizer states + gradients. ZeRO-3 / FSDP: shard optimizer states + gradients + parameters.">?</span>
+        </div>
+
+        <div class="chips" id="mp-row" style="display:none;">
+          <label class="switch">
+            <input type="checkbox" id="mp" checked /> Model Parallelism
+          </label>
+          <span class="help-icon" title="Split model layers across available GPUs (device_map='auto').">?</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Model Parameters</h2>
+        <p class="center-para">Pick a preset, load from Hugging Face, or enter the architecture manually.</p>
+
+        <div class="row">
+          <div class="field">
+            <label for="preset">Preset</label>
+            <select id="preset"></select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="hfId">Load from Hugging Face</label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="hfId" placeholder="e.g. mistralai/Mistral-7B-v0.1" style="flex:1; font-family:inherit; font-size:13.5px; padding:8px 10px; border:1px solid var(--border-strong); border-radius:6px;" />
+              <button id="hfLoad" type="button" class="chip active" style="padding:7px 16px; border:0; cursor:pointer;">Load</button>
+            </div>
+            <div class="helper" id="hfStatus">Pulls <code>config.json</code>. Works for public (ungated) models.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="numParams">Parameters (billions)</label>
+            <input type="number" id="numParams" step="0.001" min="0" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="numLayers">Layers</label>
+            <input type="number" id="numLayers" min="0" />
+          </div>
+          <div class="field">
+            <label for="vocab">Vocab Size</label>
+            <input type="number" id="vocab" min="0" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="hidden">Hidden Size</label>
+            <input type="number" id="hidden" min="0" />
+          </div>
+          <div class="field">
+            <label for="heads">Attention Heads</label>
+            <input type="number" id="heads" min="0" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="inter">Intermediate Size</label>
+            <input type="number" id="inter" min="0" />
+            <div class="helper">Usually 4 × hidden size (MLP expansion).</div>
+          </div>
+          <div class="field">
+            <label for="kvHeads">Key / Value Heads</label>
+            <input type="number" id="kvHeads" min="0" />
+            <div class="helper">Differs from attention heads under Grouped Query Attention.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div>
+      <div class="panel">
+        <h2>Estimation Result</h2>
+
+        <div class="result-head">
+          <div>
+            <div class="k">Total VRAM per GPU</div>
+            <div class="sub" id="summary-note">—</div>
+          </div>
+          <div class="v"><span id="total-val">0</span><span class="u" id="total-unit">MiB</span></div>
+        </div>
+
+        <div class="chart-wrap" id="chart"></div>
+
+        <div class="legend" id="legend"></div>
+
+        <ul class="result-list" id="results"></ul>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Formulas derived from an MIT-licensed open-source estimator. Activation accounting follows
+    <a href="https://arxiv.org/abs/2205.05198" target="_blank" rel="noreferrer">arxiv.org/abs/2205.05198</a>.
+    Estimates — real allocations vary with framework, kernel, and memory fragmentation.
+  </footer>
+</div>
+
+<script>
+/* Memory Calculator — original UI, open-source formulas (MIT) */
+
+const PRESETS = [
+  // --- Popular open-source LLMs (ungated) ---
+  { label: "Qwen 2.5 — 72B",         m: { numParams: 72.7,  numLayers: 80, vocabSize: 152064, hiddenSize: 8192, intermediateSize: 29568, numAttentionHeads: 64, numKeyValueHeads: 8  } },
+  { label: "Qwen 2.5 — 32B",         m: { numParams: 32.5,  numLayers: 64, vocabSize: 152064, hiddenSize: 5120, intermediateSize: 27648, numAttentionHeads: 40, numKeyValueHeads: 8  } },
+  { label: "Qwen 2.5 — 14B",         m: { numParams: 14.7,  numLayers: 48, vocabSize: 152064, hiddenSize: 5120, intermediateSize: 13824, numAttentionHeads: 40, numKeyValueHeads: 8  } },
+  { label: "Qwen 2.5 — 7B",          m: { numParams: 7.62,  numLayers: 28, vocabSize: 152064, hiddenSize: 3584, intermediateSize: 18944, numAttentionHeads: 28, numKeyValueHeads: 4  } },
+  { label: "Gemma 2 — 27B",          m: { numParams: 27.2,  numLayers: 46, vocabSize: 256000, hiddenSize: 4608, intermediateSize: 36864, numAttentionHeads: 32, numKeyValueHeads: 16 } },
+  { label: "Gemma 2 — 9B",           m: { numParams: 9.24,  numLayers: 42, vocabSize: 256000, hiddenSize: 3584, intermediateSize: 14336, numAttentionHeads: 16, numKeyValueHeads: 8  } },
+  { label: "Phi-3 Medium — 14B",     m: { numParams: 14.0,  numLayers: 40, vocabSize: 32064,  hiddenSize: 5120, intermediateSize: 17920, numAttentionHeads: 40, numKeyValueHeads: 10 } },
+  { label: "Phi-3 Mini — 3.8B",      m: { numParams: 3.82,  numLayers: 32, vocabSize: 32064,  hiddenSize: 3072, intermediateSize: 8192,  numAttentionHeads: 32, numKeyValueHeads: 32 } },
+  { label: "Mistral — 7B v0.1",      m: { numParams: 7.51,  numLayers: 32, vocabSize: 32000,  hiddenSize: 4096, intermediateSize: 14336, numAttentionHeads: 32, numKeyValueHeads: 8  } },
+  { label: "DeepSeek-Coder-V2 Lite", m: { numParams: 15.7,  numLayers: 27, vocabSize: 102400, hiddenSize: 2048, intermediateSize: 10944, numAttentionHeads: 16, numKeyValueHeads: 16 } },
+  // --- Llama family (gated on HF, included for size reference) ---
+  { label: "Llama 2 — 70B",     m: { numParams: 70,     numLayers: 80, vocabSize: 32000,  hiddenSize: 8192, intermediateSize: 28672, numAttentionHeads: 64, numKeyValueHeads: 8  } },
+  { label: "Llama 2 — 13B",     m: { numParams: 13.058, numLayers: 40, vocabSize: 32000,  hiddenSize: 5120, intermediateSize: 13824, numAttentionHeads: 40, numKeyValueHeads: 40 } },
+  { label: "Llama 2 — 7B",      m: { numParams: 6.772,  numLayers: 32, vocabSize: 32000,  hiddenSize: 4096, intermediateSize: 11008, numAttentionHeads: 32, numKeyValueHeads: 32 } },
+  // --- Phi (older) ---
+  { label: "Phi-2 — 2.7B",      m: { numParams: 2.78,   numLayers: 32, vocabSize: 51200,  hiddenSize: 2560, intermediateSize: 4*2560, numAttentionHeads: 32, numKeyValueHeads: 32 } },
+  { label: "Phi-1.5 — 1.4B",    m: { numParams: 1.418,  numLayers: 24, vocabSize: 51200,  hiddenSize: 2048, intermediateSize: 4*2048, numAttentionHeads: 32, numKeyValueHeads: 32 } },
+  // --- GPT-2 family ---
+  { label: "GPT-2 XL — 1.6B",   m: { numParams: 1.608,  numLayers: 48, vocabSize: 50257,  hiddenSize: 1600, intermediateSize: 4*1600, numAttentionHeads: 25, numKeyValueHeads: 25 } },
+  { label: "GPT-2 Large",       m: { numParams: 0.812,  numLayers: 36, vocabSize: 50257,  hiddenSize: 1280, intermediateSize: 4*1280, numAttentionHeads: 20, numKeyValueHeads: 20 } },
+  { label: "GPT-2 Medium",      m: { numParams: 0.380,  numLayers: 24, vocabSize: 50257,  hiddenSize: 1024, intermediateSize: 4*1024, numAttentionHeads: 16, numKeyValueHeads: 16 } },
+  { label: "GPT-2 Small",       m: { numParams: 0.137,  numLayers: 12, vocabSize: 50257,  hiddenSize: 768,  intermediateSize: 4*768,  numAttentionHeads: 12, numKeyValueHeads: 12 } },
+];
+
+const Precision = { full: "full", mixed: "mixed", half: "half" };
+const Optimizer = { Adam: "Adam", SGD: "SGD" };
+const MIB = 2**20, GIB = 2**30;
+
+const COLOR = {
+  cudaKernels: "var(--c-cuda)",
+  parameters:  "var(--c-params)",
+  activations: "var(--c-act)",
+  kvCache:     "var(--c-kv)",
+  gradients:   "var(--c-grad)",
+  firstMoments:"var(--c-m1)",
+  secondMoments:"var(--c-m2)",
+  outputs:     "var(--c-out)",
+};
+const GRAD = {
+  cudaKernels: "var(--g-cuda)",
+  parameters:  "var(--g-params)",
+  activations: "var(--g-act)",
+  kvCache:     "var(--g-kv)",
+  gradients:   "var(--g-grad)",
+  firstMoments:"var(--g-m1)",
+  secondMoments:"var(--g-m2)",
+  outputs:     "var(--g-out)",
+};
+
+// Previous values for change-detection (drives flash animations)
+const prev = { total: null, byKey: {} };
+const LABEL = {
+  cudaKernels:  "CUDA Kernels",
+  parameters:   "Parameters",
+  activations:  "Activations",
+  kvCache:      "KV Cache",
+  gradients:    "Gradients",
+  firstMoments: "First Moments",
+  secondMoments:"Second Moments",
+  outputs:      "Output Tensor",
+};
+
+const state = {
+  isTraining: true,
+  inferencePrecision: Precision.half,
+  trainingPrecision: Precision.mixed,
+  optimizer: Optimizer.Adam,
+  optimizerSGDMomentum: true,
+  sequenceLength: 512,
+  batchSize: 4,
+  numGPUs: 1,
+  gpuVramGiB: 80,
+  trainingParallelism: "zero3",   // ddp | zero1 | zero2 | zero3
+  isInferenceModelParallelism: true,
+  unit: "MiB",
+  presetIndex: 16, // GPT-2 Large
+  modelConfig: { ...PRESETS[16].m },
+};
+
+/*
+ * ZeRO sharding matrix (training, numGPUs > 1):
+ *   DDP     — nothing sharded
+ *   ZeRO-1  — optimizer states sharded
+ *   ZeRO-2  — optimizer states + gradients sharded
+ *   ZeRO-3  — optimizer states + gradients + parameters sharded (== FSDP Full Shard)
+ */
+function shardDivisors() {
+  const n = state.numGPUs;
+  if (state.isTraining) {
+    if (n <= 1) return { params: 1, grads: 1, optim: 1 };
+    switch (state.trainingParallelism) {
+      case "ddp":   return { params: 1, grads: 1, optim: 1 };
+      case "zero1": return { params: 1, grads: 1, optim: n };
+      case "zero2": return { params: 1, grads: n, optim: n };
+      case "zero3": return { params: n, grads: n, optim: n };
+    }
+  }
+  // inference
+  const parallel = n > 1 && state.isInferenceModelParallelism;
+  return { params: parallel ? n : 1, grads: 1, optim: 1 };
+}
+
+const $ = id => document.getElementById(id);
+const round = (n, d) => Number(n.toFixed(d));
+const fmt = n => n == null ? "–" : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+
+/* ===== Core formulas (open-source, MIT) ===== */
+function estimate() {
+  const { numParams, vocabSize } = state.modelConfig;
+  const { optimizer, optimizerSGDMomentum, batchSize, sequenceLength,
+          isTraining, trainingPrecision, inferencePrecision, unit } = state;
+
+  const bppParams = isTraining
+    ? (trainingPrecision === Precision.mixed ? 6 : 4)
+    : (inferencePrecision === Precision.full ? 4 : 2);
+  const shard = shardDivisors();
+  const div = unit === "MiB" ? MIB : GIB;
+  const prec = unit === "MiB" ? 0 : 3;
+
+  const cudaKernels   = 1000 * MIB;
+  const parameters    = (bppParams * numParams * 1e9) / shard.params;
+  const activations   = activationsBytes();
+  const outputs       = 4 * batchSize * sequenceLength * vocabSize * (isTraining ? 2 : 1);
+  const gradients     = (4 * numParams * 1e9) / shard.grads;
+  const firstMoments  = (4 * numParams * 1e9) / shard.optim;
+  const secondMoments = (4 * numParams * 1e9) / shard.optim;
+  const kvCache       = kvCacheBytes();
+
+  return {
+    cudaKernels:   round(cudaKernels / div, prec),
+    parameters:    round(parameters / div, prec),
+    outputs:       round(outputs / div, prec),
+    activations:   round(activations / div, prec),
+    kvCache:       !isTraining ? round(kvCache / div, prec) : undefined,
+    gradients:     isTraining ? round(gradients / div, prec) : undefined,
+    firstMoments:  isTraining && ((optimizer===Optimizer.SGD && optimizerSGDMomentum) || optimizer===Optimizer.Adam)
+                     ? round(firstMoments / div, prec) : undefined,
+    secondMoments: isTraining && optimizer===Optimizer.Adam ? round(secondMoments / div, prec) : undefined,
+  };
+}
+
+/* KV Cache — autoregressive attention cache during generation.
+ * Formula: 2 (K + V) × L × B × seq × num_kv_heads × head_dim × bytes_per_elem
+ */
+function kvCacheBytes() {
+  const { hiddenSize, numAttentionHeads, numKeyValueHeads, numLayers } = state.modelConfig;
+  const { batchSize: b, sequenceLength: s, inferencePrecision } = state;
+  const bpp = inferencePrecision === Precision.full ? 4 : 2;
+  const headDim = hiddenSize / numAttentionHeads;
+  return 2 * numLayers * b * s * numKeyValueHeads * headDim * bpp;
+}
+
+function activationsBytes() {
+  const { hiddenSize, numAttentionHeads, numKeyValueHeads, intermediateSize, numLayers } = state.modelConfig;
+  const { batchSize: b, sequenceLength: s, isTraining, trainingPrecision, inferencePrecision } = state;
+  const bpp = ((isTraining && trainingPrecision===Precision.mixed) ||
+               (!isTraining && inferencePrecision!==Precision.full)) ? 2 : 4;
+  const hd = hiddenSize / numAttentionHeads;
+
+  const attnIn    = bpp * b * s * hiddenSize;
+  const q         = bpp * b * s * hd * numAttentionHeads;
+  const k         = bpp * b * s * hd * numKeyValueHeads;
+  const softOut   = bpp * b * numAttentionHeads * s * s;
+  const softMask  = 1   * b * numAttentionHeads * s * s;
+  const dropOut   = bpp * b * numAttentionHeads * s * s;
+  const v         = bpp * b * s * hd * numKeyValueHeads;
+  const outProjIn = bpp * b * s * numAttentionHeads * hd;
+  const attnDrop  = 1   * b * s * hiddenSize;
+  const attnBlock = attnIn + q + k + softOut + v + outProjIn + softMask + dropOut + attnDrop;
+
+  const mlpIn   = bpp * b * s * hiddenSize;
+  const actIn   = bpp * b * s * intermediateSize;
+  const downIn  = bpp * b * s * intermediateSize;
+  const dropM   = 1   * b * s * hiddenSize;
+  const mlpBlock = mlpIn + actIn + downIn + dropM;
+
+  const layerNorms = bpp * b * s * hiddenSize * 2;
+  const layer = attnBlock + mlpBlock + layerNorms;
+  return isTraining ? layer * numLayers : layer;
+}
+
+function totalPerGPU(r, isFirst) {
+  const p = state.unit === "MiB" ? 0 : 3;
+  return round(
+    r.cudaKernels + r.parameters +
+    (r.outputs || 0) * Number(isFirst) +
+    (r.activations || 0) + (r.kvCache || 0) + (r.gradients || 0) +
+    (r.firstMoments || 0) + (r.secondMoments || 0),
+    p
+  );
+}
+
+function componentList(r) {
+  return [
+    ["cudaKernels",  r.cudaKernels],
+    ["parameters",   r.parameters],
+    ["activations",  r.activations],
+    ["kvCache",      r.kvCache],
+    ["gradients",    r.gradients],
+    ["firstMoments", r.firstMoments],
+    ["secondMoments",r.secondMoments],
+    ["outputs",      r.outputs],
+  ].filter(([,v]) => v != null && v > 0);
+}
+
+/* ===== Render ===== */
+function render() {
+  // Visibility
+  $("prec-training").style.display  = state.isTraining ? "flex" : "none";
+  $("prec-inference").style.display = state.isTraining ? "none" : "flex";
+  $("opt-row").style.display        = state.isTraining ? "flex" : "none";
+  $("sgd-momentum-wrap").style.display = (state.isTraining && state.optimizer === "SGD") ? "inline-flex" : "none";
+  $("fsdp-row").style.display       = (state.isTraining && state.numGPUs > 1) ? "flex" : "none";
+  $("mp-row").style.display         = (!state.isTraining && state.numGPUs > 1) ? "flex" : "none";
+  $("batch-label").textContent      = state.numGPUs > 1 ? "Per-GPU Batch Size" : "Batch Size";
+  $("total-unit").textContent       = state.unit;
+
+  // Highlight chips
+  $("chip-training").classList.toggle("active", state.isTraining);
+  $("chip-inference").classList.toggle("active", !state.isTraining);
+  document.querySelectorAll("[data-tprec]").forEach(c => c.classList.toggle("active", c.dataset.tprec === state.trainingPrecision));
+  document.querySelectorAll("[data-prec]").forEach(c => c.classList.toggle("active", c.dataset.prec === state.inferencePrecision));
+  document.querySelectorAll("[data-opt]").forEach(c => c.classList.toggle("active", c.dataset.opt === state.optimizer));
+  document.querySelectorAll("[data-unit]").forEach(c => c.classList.toggle("active", c.dataset.unit === state.unit));
+  document.querySelectorAll("[data-par]").forEach(c => c.classList.toggle("active", c.dataset.par === state.trainingParallelism));
+
+  // Errors
+  $("seq-err").style.display   = state.sequenceLength <= 0 ? "block" : "none";
+  $("batch-err").style.display = state.batchSize <= 0 ? "block" : "none";
+  $("gpus-err").style.display  = state.numGPUs <= 0 ? "block" : "none";
+
+  // Validate
+  const mc = state.modelConfig;
+  const invalid = state.sequenceLength<=0 || state.batchSize<=0 || state.numGPUs<=0 ||
+    mc.numParams<=0 || mc.hiddenSize<=0 || mc.numAttentionHeads<=0 ||
+    mc.numLayers<=0 || mc.vocabSize<=0 || mc.intermediateSize<=0 || mc.numKeyValueHeads<=0;
+
+  if (invalid) {
+    $("total-val").textContent = "–";
+    $("summary-note").textContent = "—";
+    $("chart").innerHTML = ""; $("legend").innerHTML = ""; $("results").innerHTML = "";
+    prev.total = null; prev.byKey = {};
+    return;
+  }
+
+  const r = estimate();
+  const items = componentList(r);
+  const gpu0 = totalPerGPU(r, true);
+  const gpuOther = totalPerGPU(r, false);
+
+  $("total-val").textContent = fmt(gpu0);
+  prev.total = gpu0;
+
+  // Convert the user-set GPU VRAM limit into the currently-displayed unit
+  const limit = state.unit === "MiB" ? state.gpuVramGiB * 1024 : state.gpuVramGiB;
+  const overGpu0 = state.gpuVramGiB > 0 && gpu0 > limit;
+  const overOther = state.gpuVramGiB > 0 && gpuOther > limit;
+  document.querySelector(".result-head").classList.toggle("over", overGpu0);
+
+  const limitTxt = `${state.gpuVramGiB} GiB limit`;
+  $("summary-note").textContent = overGpu0
+    ? `Exceeds ${limitTxt} on GPU 0${state.numGPUs > 1 ? ` (others ${fmt(gpuOther)} ${state.unit}${overOther ? ', also over' : ''})` : ''}.`
+    : state.numGPUs > 1
+      ? `GPU 0 holds the output tensor; other GPUs use ${fmt(gpuOther)} ${state.unit}. Limit ${limitTxt}.`
+      : `${state.isTraining ? "Training" : "Inference"} mode · 1 GPU · ${limitTxt}.`;
+
+  renderLegend(items);
+  renderChart(items, gpu0, gpuOther);
+  renderResults(r, items);
+}
+
+/* Nice-looking tick values covering [0, max], aiming for ~targetCount ticks. */
+function niceTicks(max, targetCount = 5) {
+  if (!(max > 0)) return [0];
+  const roughStep = max / (targetCount - 1);
+  const pow10 = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const norm = roughStep / pow10;
+  const step =
+    norm < 1.5 ? 1 * pow10 :
+    norm < 3   ? 2 * pow10 :
+    norm < 7   ? 5 * pow10 :
+                 10 * pow10;
+  const niceMax = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = 0; v <= niceMax + step / 2; v += step) ticks.push(Math.round(v));
+  return ticks;
+}
+
+function renderChart(items, gpu0, gpuOther) {
+  const n = state.numGPUs;
+  const chart = $("chart");
+
+  // Build per-GPU totals for each row
+  const perGpu = [];
+  for (let i = 0; i < n; i++) perGpu.push(i === 0 ? gpu0 : gpuOther);
+  const dataMax = Math.max(...perGpu, 1);
+  const ticks = niceTicks(dataMax, 5);
+  const niceMax = ticks[ticks.length - 1] || dataMax;
+
+  // SVG coord system
+  const W  = 540;
+  const ml = n > 1 ? 56 : 28;        // room for Y label + GPU index text
+  const mr = 100;                     // room for per-GPU totals on the right
+  const mt = 12;
+  const mb = 34;
+  const rowH   = n > 1 ? 30 : 36;
+  const rowGap = 10;
+  const chartH = n * rowH + Math.max(0, n - 1) * rowGap;
+  const H  = mt + chartH + mb;
+  const plotW = W - ml - mr;
+  const scaleX = v => (v / niceMax) * plotW;
+
+  const limit = state.unit === "MiB" ? state.gpuVramGiB * 1024 : state.gpuVramGiB;
+
+  const parts = [];
+  parts.push(`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`);
+
+  // Rotated Y axis label (only when multiple GPUs)
+  if (n > 1) {
+    const cy = mt + chartH / 2;
+    parts.push(`<text class="y-label" x="10" y="${cy}" transform="rotate(-90 10 ${cy})" text-anchor="middle">GPU Index</text>`);
+  }
+
+  // Vertical gridlines at each tick
+  ticks.forEach(t => {
+    const x = ml + scaleX(t);
+    parts.push(`<line class="grid" x1="${x}" y1="${mt}" x2="${x}" y2="${mt + chartH}" />`);
+  });
+
+  // Horizontal grid top/bottom of plot area
+  parts.push(`<line class="grid" x1="${ml}" y1="${mt}" x2="${ml + plotW}" y2="${mt}" />`);
+  parts.push(`<line class="grid" x1="${ml}" y1="${mt + chartH}" x2="${ml + plotW}" y2="${mt + chartH}" />`);
+
+  // Per-GPU rows (GPU 0 at bottom)
+  for (let gpuIdx = 0; gpuIdx < n; gpuIdx++) {
+    const rowFromTop = n - 1 - gpuIdx;
+    const y = mt + rowFromTop * (rowH + rowGap);
+
+    if (n > 1) {
+      parts.push(`<text class="gpu-idx" x="${ml - 10}" y="${y + rowH / 2 + 4}" text-anchor="end">${gpuIdx}</text>`);
+    }
+
+    let cum = 0;
+    items.forEach(([k, v]) => {
+      const vv = (k === "outputs" && gpuIdx !== 0) ? 0 : v;
+      if (vv <= 0) return;
+      const x = ml + scaleX(cum);
+      const w = scaleX(vv);
+      parts.push(`<rect class="seg" data-key="${k}-${gpuIdx}" x="${x}" y="${y}" width="${w.toFixed(2)}" height="${rowH}" fill="${COLOR[k]}"><title>${LABEL[k]}: ${fmt(vv)} ${state.unit}</title></rect>`);
+      cum += vv;
+    });
+
+    // Per-GPU total on the right
+    const total = perGpu[gpuIdx];
+    const over = state.gpuVramGiB > 0 && total > limit;
+    parts.push(`<text class="gpu-total ${over ? 'over' : ''}" x="${ml + plotW + 6}" y="${y + rowH / 2 + 4}">${fmt(total)} ${state.unit}</text>`);
+  }
+
+  // X axis line
+  const axisY = mt + chartH;
+  parts.push(`<line class="axis" x1="${ml}" y1="${axisY}" x2="${ml + plotW}" y2="${axisY}" />`);
+
+  // X axis ticks + labels
+  ticks.forEach(t => {
+    const x = ml + scaleX(t);
+    parts.push(`<line class="tick" x1="${x}" y1="${axisY}" x2="${x}" y2="${axisY + 4}" />`);
+    parts.push(`<text class="tick-label" x="${x}" y="${axisY + 18}" text-anchor="middle">${fmt(t)}</text>`);
+  });
+
+  parts.push(`</svg>`);
+  chart.innerHTML = parts.join("");
+}
+
+function renderLegend(items) {
+  const html = items.map(([k], idx) => `
+    <span class="legend-item" style="animation-delay:${idx * 30}ms;">
+      <span class="legend-sw" style="background:${GRAD[k]}"></span>
+      ${LABEL[k]}
+    </span>
+  `).join("");
+  $("legend").innerHTML = html;
+}
+
+function renderResults(r, items) {
+  const perGpu = state.numGPUs > 1 ? "per GPU" : "";
+  const nParams = state.modelConfig.numParams;
+  const bppParams = state.isTraining
+    ? (state.trainingPrecision === Precision.mixed ? "6 (fp32 master + fp16 working)" : "4")
+    : (state.inferencePrecision === Precision.full ? "4" : "2");
+  const sh = shardDivisors();
+  const divStr = d => d > 1 ? ` ÷ ${d} GPUs` : "";
+  const paramDiv = divStr(sh.params);
+  const gradDiv  = divStr(sh.grads);
+  const optDiv   = divStr(sh.optim);
+
+  const mc = state.modelConfig;
+  const kvBpp = state.inferencePrecision === Precision.full ? 4 : 2;
+  const headDim = mc.hiddenSize && mc.numAttentionHeads ? (mc.hiddenSize / mc.numAttentionHeads) : 0;
+
+  const desc = {
+    cudaKernels: `PyTorch's first-touch CUDA allocation (300 MiB – 2 GiB).`,
+    parameters: `${nParams}B × ${bppParams} bytes/param${paramDiv}.`,
+    activations: state.isTraining
+      ? `Sum across all ${mc.numLayers} layers. Quadratic in sequence length.`
+      : `Largest single-layer activations. Quadratic in sequence length.`,
+    kvCache: `2 (K + V) × ${mc.numLayers} layers × ${state.batchSize} × ${state.sequenceLength} × ${mc.numKeyValueHeads} kv-heads × ${headDim} head-dim × ${kvBpp} bytes.`,
+    gradients: `${nParams}B × 4 bytes (fp32)${gradDiv}.`,
+    firstMoments: state.optimizer === "Adam"
+      ? `Adam m: EMA of gradients, fp32${optDiv}.`
+      : `SGD momentum buffer, fp32${optDiv}.`,
+    secondMoments: `Adam v: EMA of squared gradients, fp32${optDiv}.`,
+    outputs: state.isTraining
+      ? `${state.batchSize} × ${state.sequenceLength} × ${mc.vocabSize} × 4 bytes × 2 (logits + softmax probs).`
+      : `${state.batchSize} × ${state.sequenceLength} × ${mc.vocabSize} × 4 bytes.`,
+  };
+
+  const resultsEl = $("results");
+  // If row count or key order changed, rebuild DOM; else reuse nodes to tween values
+  const sameKeys = resultsEl.children.length === items.length &&
+    Array.from(resultsEl.children).every((li, i) => li.dataset.key === items[i][0]);
+
+  if (!sameKeys) {
+    resultsEl.innerHTML = items.map(([k, v]) => `
+      <li data-key="${k}">
+        <div class="primary">
+          <span class="dot" style="background:${GRAD[k]}"></span>
+          <span>${LABEL[k]}</span>
+          <span class="num">
+            <span class="num-main"><span class="num-val">${fmt(v)}</span> <span class="num-unit">${state.unit}</span></span>
+            <span class="num-sub">${perGpu || " "}</span>
+          </span>
+        </div>
+        <div class="secondary">${desc[k] || ""}</div>
+      </li>
+    `).join("");
+  }
+
+  items.forEach(([k, v]) => {
+    const li = resultsEl.querySelector(`li[data-key="${k}"]`);
+    if (!li) return;
+    li.querySelector(".secondary").textContent = desc[k] || "";
+    li.querySelector(".num-val").textContent = fmt(v);
+    li.querySelector(".num-unit").textContent = state.unit;
+    li.querySelector(".num-sub").textContent = perGpu || " ";
+  });
+
+  // Remember current values for next render diff
+  prev.byKey = Object.fromEntries(items);
+}
+
+/* ===== Wiring ===== */
+function bindNum(id, setter) {
+  const el = $(id);
+  el.addEventListener("input", () => {
+    const v = Number(el.value);
+    if (v >= 0) setter(v);
+    render();
+  });
+}
+
+function applyPreset(i) {
+  state.presetIndex = i;
+  state.modelConfig = { ...PRESETS[i].m };
+  syncModelInputs();
+  render();
+}
+
+function syncModelInputs() {
+  $("numParams").value = state.modelConfig.numParams;
+  $("numLayers").value = state.modelConfig.numLayers;
+  $("vocab").value     = state.modelConfig.vocabSize;
+  $("hidden").value    = state.modelConfig.hiddenSize;
+  $("heads").value     = state.modelConfig.numAttentionHeads;
+  $("inter").value     = state.modelConfig.intermediateSize;
+  $("kvHeads").value   = state.modelConfig.numKeyValueHeads;
+}
+
+/* Load a model's architecture from a public Hugging Face repo.
+ * Fetches config.json, and tries safetensors index for param count.
+ */
+async function loadFromHF(modelId) {
+  const status = $("hfStatus");
+  const setStatus = (msg, isErr) => {
+    status.textContent = msg;
+    status.classList.toggle("err", !!isErr);
+  };
+  modelId = (modelId || "").trim().replace(/^https?:\/\/huggingface\.co\//, "").replace(/\/+$/, "");
+  if (!modelId.includes("/")) { setStatus("Enter a model ID like 'org/name'.", true); return; }
+
+  const base = `https://huggingface.co/${modelId}/resolve/main`;
+  setStatus(`Fetching config.json for ${modelId}…`, false);
+  let cfg;
+  try {
+    const res = await fetch(`${base}/config.json`, { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? "gated or private" : `HTTP ${res.status}`);
+    cfg = await res.json();
+  } catch (e) {
+    setStatus(`Failed: ${e.message}. Try an ungated model.`, true);
+    return;
+  }
+
+  const num = (v, fallback) => (typeof v === "number" && v > 0) ? v : fallback;
+  const hidden = num(cfg.hidden_size, 0);
+  const heads  = num(cfg.num_attention_heads, 0);
+  const kvHeads = num(cfg.num_key_value_heads, heads);
+  const layers = num(cfg.num_hidden_layers, 0);
+  const vocab = num(cfg.vocab_size, 0);
+  const inter = num(cfg.intermediate_size, hidden ? hidden * 4 : 0);
+
+  if (!hidden || !heads || !layers || !vocab) {
+    setStatus("config.json loaded but missing required architecture fields.", true);
+    return;
+  }
+
+  // Try safetensors index to derive parameter count from total bytes.
+  let numParams = 0;
+  try {
+    const r2 = await fetch(`${base}/model.safetensors.index.json`, { cache: "no-store" });
+    if (r2.ok) {
+      const idx = await r2.json();
+      const bytes = idx.metadata && idx.metadata.total_size;
+      if (bytes) {
+        const torchDtype = (cfg.torch_dtype || "").toLowerCase();
+        const bpp = torchDtype.includes("float32") || torchDtype === "fp32" ? 4
+                 : torchDtype.includes("bfloat16") || torchDtype.includes("float16") ? 2 : 2;
+        numParams = Number((bytes / bpp / 1e9).toFixed(3));
+      }
+    }
+  } catch (_) { /* ignore */ }
+
+  // HF models with tied embeddings share lm_head with input embeddings (common in
+  // Gemma, Qwen2, Llama-3.2 small, Phi-3). Count the embedding matrix once in that case.
+  const tiedEmbeddings = cfg.tie_word_embeddings === true;
+
+  if (!numParams) {
+    // Estimate: embeddings + per-layer (attn + MLP)
+    const headDim = hidden / heads;
+    const attnParams = hidden * hidden + 2 * hidden * kvHeads * headDim + hidden * hidden; // Q + K + V + O
+    const mlpParams = 3 * hidden * inter; // gate + up + down (SwiGLU-style)
+    const perLayer = attnParams + mlpParams + 2 * hidden;
+    const embed = vocab * hidden * (tiedEmbeddings ? 1 : 2);
+    numParams = Number(((embed + perLayer * layers) / 1e9).toFixed(3));
+  }
+
+  state.modelConfig = {
+    numParams,
+    numLayers: layers,
+    vocabSize: vocab,
+    hiddenSize: hidden,
+    numAttentionHeads: heads,
+    numKeyValueHeads: kvHeads,
+    intermediateSize: inter,
+  };
+  syncModelInputs();
+  render();
+  setStatus(`Loaded ${modelId} · ${numParams}B params · ${layers} layers · hidden=${hidden}${tiedEmbeddings ? ' · tied embeddings' : ''}.`, false);
+}
+
+function init() {
+  const sel = $("preset");
+  PRESETS.forEach((p, i) => {
+    const o = document.createElement("option");
+    o.value = String(i); o.textContent = p.label;
+    sel.appendChild(o);
+  });
+  sel.value = String(state.presetIndex);
+  applyPreset(state.presetIndex);
+  sel.addEventListener("change", (e) => applyPreset(Number(e.target.value)));
+
+  $("chip-training").addEventListener("click", () => { state.isTraining = true; render(); });
+  $("chip-inference").addEventListener("click", () => { state.isTraining = false; render(); });
+  document.querySelectorAll("[data-tprec]").forEach(c => c.addEventListener("click", () => { state.trainingPrecision = c.dataset.tprec; render(); }));
+  document.querySelectorAll("[data-prec]").forEach(c => c.addEventListener("click", () => { state.inferencePrecision = c.dataset.prec; render(); }));
+  document.querySelectorAll("[data-opt]").forEach(c => c.addEventListener("click", () => { state.optimizer = c.dataset.opt; render(); }));
+  document.querySelectorAll("[data-unit]").forEach(c => c.addEventListener("click", () => { state.unit = c.dataset.unit; render(); }));
+  $("sgd-momentum").addEventListener("change", e => { state.optimizerSGDMomentum = e.target.checked; render(); });
+  document.querySelectorAll("[data-par]").forEach(c => c.addEventListener("click", () => { state.trainingParallelism = c.dataset.par; render(); }));
+  $("mp").addEventListener("change",   e => { state.isInferenceModelParallelism = e.target.checked; render(); });
+
+  bindNum("seq",       v => state.sequenceLength = v);
+  bindNum("batch",     v => state.batchSize = v);
+  bindNum("gpus",      v => state.numGPUs = v);
+  bindNum("gpuVram",   v => state.gpuVramGiB = v);
+  bindNum("numParams", v => state.modelConfig.numParams = v);
+  bindNum("numLayers", v => state.modelConfig.numLayers = v);
+  bindNum("vocab",     v => state.modelConfig.vocabSize = v);
+  bindNum("hidden",    v => state.modelConfig.hiddenSize = v);
+  bindNum("heads",     v => state.modelConfig.numAttentionHeads = v);
+  bindNum("inter",     v => state.modelConfig.intermediateSize = v);
+  bindNum("kvHeads",   v => state.modelConfig.numKeyValueHeads = v);
+
+  $("seq").value = state.sequenceLength;
+  $("batch").value = state.batchSize;
+  $("gpus").value = state.numGPUs;
+  $("gpuVram").value = state.gpuVramGiB;
+
+  $("hfLoad").addEventListener("click", () => loadFromHF($("hfId").value));
+  $("hfId").addEventListener("keydown", e => { if (e.key === "Enter") loadFromHF(e.target.value); });
+
+  render();
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
