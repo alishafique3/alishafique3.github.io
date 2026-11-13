@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KV Cache Calculator</title>
+<meta name="description" content="Per-device KV cache memory estimator for transformer inference across model families and tensor-parallel topologies." />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/kv-cache-icon-512.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<style>
+  :root {
+    --bg: #ffffff;
+    --card: #ffffff;
+    --fg: #0f172a;
+    --fg-2: #334155;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --accent: #4f46e5;
+    --accent-weak: #eef2ff;
+    --accent-strong: #4338ca;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --c-kv:      #0ea5e9;
+    --c-idx:     #a78bfa;
+    --c-linear:  #f59e0b;
+    --c-draft:   #ec4899;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-strong); text-decoration: underline; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 12.5px; }
+
+  .container { max-width: 1120px; margin: 0 auto; padding: 32px 24px 64px; position: relative; }
+
+  .gh-link {
+    position: absolute; top: 24px; right: 24px;
+    color: var(--fg-2); display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: 999px; font-size: 13px; font-weight: 500;
+    transition: all 0.15s ease; text-decoration: none;
+  }
+  .gh-link:hover { color: var(--fg); border-color: var(--border-strong); background: #f8fafc; }
+  .gh-link svg { display: block; }
+
+  .page-head { margin-bottom: 28px; text-align: center; }
+  .page-head h1 { font-size: 36px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; color: var(--fg); }
+  .page-head p { margin: 0 auto; color: var(--muted); font-size: 17px; max-width: 720px; }
+
+  .layout { display: grid; grid-template-columns: minmax(300px, 0.8fr) 1.5fr; gap: 56px; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; gap: 20px; } }
+
+  .panel { background: transparent; border: 0; padding: 8px 0 20px; }
+  .panel h2 { font-size: 20px; font-weight: 600; margin: 0 0 16px; color: var(--fg); }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .row > .field { flex: 1; min-width: 0; }
+  .field { display: flex; flex-direction: column; }
+  .field label { font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+  .field input, .field select {
+    font: inherit; font-family: var(--mono); font-size: 13.5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: var(--card); color: var(--fg); width: 100%;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-weak);
+  }
+  .field .helper { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  .switch {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 13px; cursor: pointer; color: var(--fg-2);
+    padding: 8px 2px;
+  }
+  .switch input {
+    appearance: none; width: 34px; height: 18px; background: #cbd5e1;
+    border-radius: 999px; position: relative; cursor: pointer; transition: background 0.15s;
+  }
+  .switch input:checked { background: var(--accent); }
+  .switch input::before {
+    content: ""; position: absolute; width: 14px; height: 14px; background: #fff;
+    border-radius: 50%; top: 2px; left: 2px; transition: transform 0.15s ease;
+  }
+  .switch input:checked::before { transform: translateX(16px); }
+  .switch small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+  /* Results */
+  .result-head {
+    padding: 0 2px 14px;
+    margin-bottom: 14px;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  }
+  .result-head .k { font-size: 12px; color: var(--accent-strong); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .result-head .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .result-head .v { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--accent-strong); }
+  .result-head .v .u { font-size: 13px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+
+  .metric-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    margin-bottom: 18px;
+  }
+  .metric {
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: #fafbfc;
+  }
+  .metric .m-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .metric .m-val { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--fg); margin-top: 4px; }
+  .metric .m-sub { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+
+  .section-title {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin: 20px 0 10px;
+  }
+
+  .cache-list { list-style: none; padding: 0; margin: 0; }
+  .cache-list li { padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 13.5px; }
+  .cache-list li:last-child { border-bottom: 0; }
+  .cache-list .primary { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+  .cache-list .primary .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+  .cache-list .primary .num { margin-left: auto; font-family: var(--mono); font-weight: 600; text-align: right; }
+  .cache-list .secondary { font-size: 12px; color: var(--muted); margin-top: 4px; padding-left: 20px; font-family: var(--mono); }
+
+  .formula-panel {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; background: #fafbfc;
+  }
+  .formula-panel .panel-heading {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; color: var(--muted); margin-bottom: 8px;
+  }
+  .formula-panel .panel-heading strong {
+    color: var(--fg); font-family: var(--mono); font-weight: 600; font-size: 12.5px;
+  }
+  .formula-panel .formula-rows {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .formula-panel .formula-row {
+    border: 1px solid var(--border); border-radius: 6px;
+    background: #fff; padding: 8px 10px;
+  }
+  .formula-panel .formula-row .fr-name {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 600;
+    color: var(--accent-strong); margin-bottom: 4px;
+  }
+  .formula-panel .formula-row .fr-expr {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--fg); word-break: break-word; white-space: normal;
+  }
+  .formula-panel .model-fields {
+    margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);
+  }
+  .formula-panel .model-fields .mf-title {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+  }
+  .formula-panel .model-fields .mf-list {
+    margin: 0; display: flex; flex-direction: column; gap: 4px;
+    font-family: var(--mono); font-size: 11.5px;
+  }
+  .formula-panel .model-fields .mf-item {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  }
+  .formula-panel .model-fields .mf-label { color: var(--muted); flex-shrink: 0; }
+  .formula-panel .model-fields .mf-value {
+    color: var(--fg); text-align: right;
+    word-break: break-word; min-width: 0;
+  }
+  .formula-panel .model-fields .mf-item.wrap { flex-direction: column; align-items: stretch; gap: 2px; }
+  .formula-panel .model-fields .mf-item.wrap .mf-value {
+    text-align: left; font-size: 11px; line-height: 1.55;
+    padding: 4px 8px; background: #fff; border: 1px solid var(--border); border-radius: 4px;
+  }
+  .formula-panel .cache-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+
+  .source-row {
+    margin-top: 14px; font-size: 12px; color: var(--muted);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .source-row a { font-family: var(--mono); font-size: 12px; }
+
+  footer {
+    margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border);
+    text-align: center; font-size: 12.5px; color: var(--muted);
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <a class="gh-link" href="https://github.com/alishafique3/LLM-Infra-from-scratch" target="_blank" rel="noreferrer" title="View source on GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 .5C5.73.5.67 5.56.67 11.83c0 5.02 3.25 9.28 7.77 10.78.57.1.78-.25.78-.55v-2.05c-3.17.69-3.84-1.36-3.84-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.52-2.53-.29-5.2-1.27-5.2-5.63 0-1.24.44-2.26 1.17-3.06-.12-.29-.51-1.44.11-3 0 0 .96-.31 3.15 1.17a10.9 10.9 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.56.23 2.71.11 3 .73.8 1.17 1.82 1.17 3.06 0 4.37-2.68 5.33-5.22 5.61.41.35.78 1.05.78 2.12v3.15c0 .31.21.66.79.55 4.52-1.5 7.77-5.76 7.77-10.78C23.33 5.56 18.27.5 12 .5z"/></svg>
+    <span>LLM-Infra-from-scratch</span>
+  </a>
+
+  <div class="page-head">
+    <h1>KV Cache Calculator</h1>
+    <p>Estimate per-device and all-device KV cache memory for transformer inference across 55 models from 10 families, with tensor-parallel sharding and precision controls.</p>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT: CONFIGURATION -->
+    <div>
+      <div class="panel">
+        <h2>Configuration</h2>
+
+        <div class="row">
+          <div class="field">
+            <label for="family">Model family</label>
+            <select id="family"></select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="model">Model</label>
+            <select id="model"></select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="tokens">Tokens per sequence</label>
+            <input type="number" id="tokens" min="1" step="1" value="1024" />
+          </div>
+          <div class="field">
+            <label for="sequences">Sequences (batch)</label>
+            <input type="number" id="sequences" min="1" step="1" value="1" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="tp">Tensor Parallel (TP) size</label>
+            <select id="tp"></select>
+            <div class="helper" id="tp-help">TP sizes must divide the model's KV-head count evenly.</div>
+          </div>
+          <div class="field">
+            <label for="precision">KV precision</label>
+            <select id="precision">
+              <option value="bf16_fp16">BF16 / FP16</option>
+              <option value="fp8_int8">FP8 / INT8</option>
+              <option value="fp4_int4">FP4 / INT4</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" id="indexer-row" style="display:none;">
+          <div class="field">
+            <label for="indexer">Indexer precision</label>
+            <select id="indexer">
+              <option value="bf16_fp16">BF16 / FP16</option>
+              <option value="fp8_int8">FP8 / INT8</option>
+              <option value="fp4_int4">FP4 / INT4</option>
+            </select>
+            <div class="helper">DeepSeek V3.2 / V4 and GLM-5 use a separate indexer cache.</div>
+          </div>
+        </div>
+
+        <div class="row" id="spec-row" style="display:none;">
+          <div class="field">
+            <label for="spec-model">Speculative model</label>
+            <select id="spec-model"></select>
+          </div>
+          <div class="field">
+            <label for="spec-tokens">Speculative tokens</label>
+            <input type="number" id="spec-tokens" min="0" step="1" value="0" />
+          </div>
+        </div>
+
+        <div class="row" id="draft-wrap" style="display:none;">
+          <label class="switch">
+            <input type="checkbox" id="draft" />
+            <span><strong>Include draft KV cache</strong><small>Count MTP / draft layers alongside the main transformer.</small></span>
+          </label>
+        </div>
+
+        <div class="row" id="linear-wrap" style="display:none;">
+          <label class="switch">
+            <input type="checkbox" id="linear" checked />
+            <span><strong>Include linear-attention state</strong><small>Add Qwen convolution + recurrent runtime state.</small></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: RESULT -->
+    <div>
+      <div class="panel">
+        <h2>Memory Footprint</h2>
+
+        <div class="result-head">
+          <div>
+            <div class="k">PER-DEVICE SIZE</div>
+            <div class="sub" id="summary-note">—</div>
+          </div>
+          <div class="v"><span id="per-device-val">0</span><span class="u">GiB</span></div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="m-label">Per sequence</div>
+            <div class="m-val" id="per-seq-val">—</div>
+          </div>
+          <div class="metric">
+            <div class="m-label">Per token</div>
+            <div class="m-val" id="per-token-val">—</div>
+          </div>
+          <div class="metric">
+            <div class="m-label">Bytes / element</div>
+            <div class="m-val" id="bpp-val">—</div>
+          </div>
+          <div class="metric">
+            <div class="m-label">Total (all devices)</div>
+            <div class="m-val" id="all-devices-val">—</div>
+          </div>
+        </div>
+
+        <div class="section-title">Cache groups</div>
+        <ul class="cache-list" id="cache-list"></ul>
+
+        <div class="section-title">Calculation</div>
+        <div class="formula-panel">
+          <div class="panel-heading">
+            <span>Formula</span>
+            <strong id="formula-label">—</strong>
+          </div>
+          <div class="formula-rows" id="formula-rows"></div>
+          <div class="model-fields" id="model-fields" style="display:none;">
+            <div class="mf-title">Model-specific values</div>
+            <div class="mf-list" id="model-fields-list"></div>
+          </div>
+          <p class="cache-note" id="cache-note"></p>
+        </div>
+
+        <div class="source-row">
+          <span>Model configuration source:</span>
+          <a id="source-link" href="#" target="_blank" rel="noreferrer">—</a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Calculator logic and model configs adapted from
+    <a href="https://github.com/kvcache-ai/kvcache-blog/tree/d455485bd1c5265951849f011a60564da1b23cfe" target="_blank" rel="noreferrer">kvcache-ai/kvcache-blog</a>
+    (MIT License).
+    See <a href="THIRD_PARTY_NOTICES.md">THIRD_PARTY_NOTICES.md</a>.
+  </footer>
+</div>
+
+<script src="assets/models.js"></script>
+<script src="assets/calculator-core.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

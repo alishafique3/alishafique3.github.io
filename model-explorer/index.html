@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Model Explorer — GPT-2 Small (124M)</title>
+<meta name="description" content="Walk through the config.json of GPT-2 small (124M). Each field is annotated with its role in the architecture and the exact parameter count it contributes." />
+<style>
+  :root {
+    --bg: #ffffff;
+    --card: #ffffff;
+    --fg: #0f172a;
+    --fg-2: #334155;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --accent: #4f46e5;
+    --accent-weak: #eef2ff;
+    --accent-strong: #4338ca;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* JSON syntax highlight */
+    --json-key:   #7c3aed;
+    --json-str:   #047857;
+    --json-num:   #c2410c;
+    --json-bool:  #0369a1;
+    --json-null:  #94a3b8;
+    --json-punct: #64748b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-strong); text-decoration: underline; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 12.5px; }
+
+  .container { max-width: 1240px; margin: 0 auto; padding: 32px 24px 64px; position: relative; }
+
+  .gh-link {
+    position: absolute; top: 24px; right: 24px;
+    color: var(--fg-2); display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: 999px; font-size: 13px; font-weight: 500;
+    transition: all 0.15s ease; text-decoration: none;
+  }
+  .gh-link:hover { color: var(--fg); border-color: var(--border-strong); background: #f8fafc; }
+  .gh-link svg { display: block; }
+
+  /* Model picker tabs */
+  .model-picker {
+    display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px;
+    background: #f1f5f9; border: 1px solid var(--border); border-radius: 999px;
+    margin: 0 auto 24px;
+  }
+  .model-picker-wrap { text-align: center; }
+  .model-picker button {
+    padding: 8px 18px; border: 0; background: transparent;
+    color: var(--fg-2); font-size: 13px; font-weight: 500; cursor: pointer;
+    border-radius: 999px; font-family: inherit;
+    transition: all 0.15s ease;
+  }
+  .model-picker button:hover { color: var(--fg); }
+  .model-picker button.active {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  }
+  .model-view[hidden] { display: none; }
+  .model-tag-wrap { text-align: center; margin-bottom: 20px; }
+
+  .page-head { margin-bottom: 20px; text-align: center; }
+  .page-head h1 { font-size: 36px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.02em; color: var(--fg); }
+  .page-head p { margin: 0 auto; color: var(--muted); font-size: 17px; max-width: 760px; }
+  .page-head .model-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 12px; padding: 6px 14px;
+    background: var(--accent-weak); border: 1px solid #c7d2fe;
+    border-radius: 999px; font-size: 13px; color: var(--accent-strong); font-weight: 500;
+  }
+  .page-head .model-tag code { background: rgba(79,70,229,0.08); color: var(--accent-strong); font-size: 12px; }
+
+  .col-headings {
+    display: grid; grid-template-columns: minmax(360px, 1fr) 1.4fr; gap: 32px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 960px) { .col-headings { grid-template-columns: 1fr; gap: 12px; } }
+  .col-headings h2 {
+    font-size: 13px; font-weight: 600; margin: 0;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+  }
+
+  .layout { display: grid; grid-template-columns: minmax(360px, 1fr) 1.4fr; gap: 32px; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; gap: 20px; } }
+
+  /* Config column */
+  .config {
+    font-family: var(--mono); font-size: 13px; line-height: 1.75;
+    background: #fafbfc; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 18px;
+    position: sticky; top: 20px; align-self: flex-start;
+  }
+  @media (max-width: 960px) { .config { position: static; } }
+  .config .brace { color: var(--json-punct); display: block; }
+  .config .cfg-row {
+    padding: 2px 6px; margin: 0 -6px; border-radius: 4px;
+    display: flex; gap: 6px; align-items: baseline;
+    cursor: pointer; transition: background 0.1s;
+  }
+  .config .cfg-row:hover { background: #eef2ff; }
+  .config .cfg-row.active { background: var(--accent-weak); outline: 1px solid #c7d2fe; }
+  .config .cfg-row .cfg-indent { display: inline-block; width: 16px; flex-shrink: 0; }
+  .config .cfg-row .cfg-key { color: var(--json-key); }
+  .config .cfg-row .cfg-sep { color: var(--json-punct); }
+  .config .cfg-row .cfg-val.string  { color: var(--json-str); }
+  .config .cfg-row .cfg-val.number  { color: var(--json-num); }
+  .config .cfg-row .cfg-val.boolean { color: var(--json-bool); }
+  .config .cfg-row .cfg-val.null    { color: var(--json-null); }
+  .config .cfg-row .cfg-comma { color: var(--json-punct); }
+
+  /* Explanations column */
+  .cards { display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; background: #fff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .card.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+  .card .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .card .card-head .k {
+    font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--accent-strong);
+  }
+  .card .card-head .tag {
+    font-size: 10px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px;
+  }
+  .card .card-head .tag.affects { color: var(--accent); border-color: #c7d2fe; background: var(--accent-weak); }
+  .card .desc {
+    font-size: 13px; color: var(--fg-2); margin-bottom: 8px; line-height: 1.55;
+  }
+  .card .calc {
+    font-family: var(--mono); font-size: 12px;
+    background: #fafbfc; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--fg); white-space: pre-wrap; word-break: break-word;
+  }
+  .card .calc .result {
+    display: block; margin-top: 4px;
+    color: var(--accent-strong); font-weight: 600;
+  }
+
+
+  /* ---------- Walkthrough section (right column, under the cards) ---------- */
+  .right-col { display: flex; flex-direction: column; gap: 32px; }
+
+  .walkthrough-intro {
+    padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px;
+    background: #fafbfc;
+  }
+  .walkthrough-intro h3 {
+    font-size: 15px; font-weight: 700; margin: 0 0 6px; color: var(--fg);
+  }
+  .walkthrough-intro p { margin: 0; font-size: 13px; color: var(--fg-2); }
+  .walkthrough-intro .sentence {
+    display: inline-block; margin-top: 10px; padding: 8px 14px;
+    background: #fff; border: 1px solid var(--border-strong); border-radius: 999px;
+    font-family: var(--mono); font-size: 13.5px; color: var(--fg);
+  }
+  .walkthrough-intro .sentence em { color: var(--muted); font-style: normal; font-size: 11px; margin-left: 4px; }
+
+  .wt-steps { display: flex; flex-direction: column; gap: 14px; }
+  .wt-step {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: #fff;
+  }
+  .wt-step > header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; background: #fafbfc;
+    border-bottom: 1px solid var(--border);
+  }
+  .wt-step .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .wt-step .step-title { font-size: 14px; font-weight: 600; color: var(--fg); }
+  .wt-step .step-body { padding: 14px 16px; }
+  .wt-step .step-body > p { margin: 0 0 10px; font-size: 13px; color: var(--fg-2); line-height: 1.6; }
+  .wt-step .step-body > p:last-child { margin-bottom: 0; }
+
+  /* Token strip visual */
+  .tokens {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px;
+  }
+  .tokens .tok {
+    display: inline-flex; flex-direction: column; align-items: center;
+    padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 6px;
+    background: #fff; font-family: var(--mono); font-size: 12px; color: var(--fg);
+    min-width: 46px;
+  }
+  .tokens .tok small { color: var(--muted); font-size: 10.5px; margin-top: 2px; }
+
+  /* Shape tag */
+  .shape-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+  .shape-row .arrow { color: var(--muted); font-family: var(--mono); }
+  .shape {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border: 1px solid #c7d2fe; background: var(--accent-weak);
+    border-radius: 6px;
+    font-family: var(--mono); font-size: 12px; color: var(--accent-strong);
+  }
+  .shape .lbl { color: var(--muted); font-weight: 500; }
+  .shape .dims { font-weight: 700; }
+  .shape .unit { color: var(--muted); font-size: 10.5px; margin-left: 2px; }
+
+  .param-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: #ecfdf5; border: 1px solid #a7f3d0;
+    color: #047857; font-size: 11.5px; font-weight: 600;
+    font-family: var(--mono);
+  }
+  .param-pill.zero { background: #f8fafc; border-color: var(--border); color: var(--muted); }
+
+  .code-block {
+    font-family: var(--mono); font-size: 12px; color: var(--fg);
+    background: #fafbfc; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; margin: 8px 0;
+    white-space: pre-wrap; line-height: 1.7;
+  }
+  .code-block .op    { color: var(--muted); }
+  .code-block .var   { color: var(--accent-strong); }
+  .code-block .num   { color: #c2410c; }
+  .code-block .annot { color: var(--muted); font-style: italic; }
+
+  .substep {
+    border-left: 2px solid var(--border);
+    padding: 2px 0 2px 12px; margin: 10px 0;
+  }
+  .substep h4 {
+    font-size: 12px; font-weight: 600; margin: 0 0 6px;
+    color: var(--accent-strong); font-family: var(--mono);
+  }
+  .substep p { margin: 0 0 6px; font-size: 12.5px; color: var(--fg-2); }
+
+  /* Attention variants callout (MHA / MQA / GQA) */
+  .attn-variants {
+    margin: 10px 0; padding: 12px 14px;
+    background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px;
+  }
+  .attn-variants .av-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .attn-variants .av-badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 10px; border-radius: 999px;
+    background: #f97316; color: #fff;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .attn-variants .av-title { font-size: 13px; font-weight: 600; color: #7c2d12; }
+  .attn-variants p { margin: 0 0 8px; font-size: 12.5px; color: var(--fg-2); line-height: 1.55; }
+  .attn-variants table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  .attn-variants th, .attn-variants td {
+    text-align: left; font-size: 11.5px; padding: 6px 8px;
+    border-bottom: 1px solid #fed7aa;
+  }
+  .attn-variants th {
+    color: #9a3412; font-weight: 600; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.05em; background: #ffedd5;
+  }
+  .attn-variants tr:last-child td { border-bottom: 0; }
+  .attn-variants td { font-family: var(--mono); color: var(--fg-2); }
+  .attn-variants td:first-child {
+    font-family: var(--mono); font-weight: 700; color: #7c2d12;
+  }
+  .attn-variants td.models { font-family: inherit; font-size: 11.5px; color: var(--muted); }
+  .attn-variants .av-note {
+    margin-top: 10px; font-size: 11.5px; color: #78350f;
+    padding: 6px 10px; background: #ffedd5; border-radius: 6px;
+  }
+
+  /* MoE callout (teal, used for DeepSeek) */
+  .moe-callout {
+    margin: 10px 0; padding: 12px 14px;
+    background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 8px;
+  }
+  .moe-callout .mc-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .moe-callout .mc-badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 10px; border-radius: 999px;
+    background: #06b6d4; color: #fff;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .moe-callout .mc-title { font-size: 13px; font-weight: 600; color: #155e75; }
+  .moe-callout p { margin: 0 0 8px; font-size: 12.5px; color: var(--fg-2); line-height: 1.55; }
+  .moe-callout table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  .moe-callout th, .moe-callout td {
+    text-align: left; font-size: 11.5px; padding: 6px 8px;
+    border-bottom: 1px solid #a5f3fc;
+  }
+  .moe-callout th {
+    color: #0e7490; font-weight: 600; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.05em; background: #cffafe;
+  }
+  .moe-callout tr:last-child td { border-bottom: 0; }
+  .moe-callout td { font-family: var(--mono); color: var(--fg-2); }
+  .moe-callout td:first-child { font-weight: 700; color: #155e75; }
+  .moe-callout .mc-note {
+    margin-top: 10px; font-size: 11.5px; color: #155e75;
+    padding: 6px 10px; background: #cffafe; border-radius: 6px;
+  }
+
+  /* Active vs total pills */
+  .param-pill.active { background: #ecfeff; border-color: #a5f3fc; color: #0e7490; }
+  .totals-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;
+  }
+  .totals-grid .total-card {
+    padding: 12px 14px; border-radius: 8px;
+  }
+  .totals-grid .total-card.total  { background: var(--accent-weak); border: 1px solid #c7d2fe; }
+  .totals-grid .total-card.active { background: #ecfeff;           border: 1px solid #a5f3fc; }
+  .totals-grid .label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .totals-grid .total  .label { color: var(--accent-strong); }
+  .totals-grid .active .label { color: #0e7490; }
+  .totals-grid .val {
+    font-family: var(--mono); font-size: 18px; font-weight: 700;
+  }
+  .totals-grid .total  .val { color: var(--accent-strong); }
+  .totals-grid .active .val { color: #0e7490; }
+  .totals-grid .desc { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <a class="gh-link" href="https://github.com/alishafique3/LLM-Infra-from-scratch" target="_blank" rel="noreferrer" title="View source on GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 .5C5.73.5.67 5.56.67 11.83c0 5.02 3.25 9.28 7.77 10.78.57.1.78-.25.78-.55v-2.05c-3.17.69-3.84-1.36-3.84-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.52-2.53-.29-5.2-1.27-5.2-5.63 0-1.24.44-2.26 1.17-3.06-.12-.29-.51-1.44.11-3 0 0 .96-.31 3.15 1.17a10.9 10.9 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.56.23 2.71.11 3 .73.8 1.17 1.82 1.17 3.06 0 4.37-2.68 5.33-5.22 5.61.41.35.78 1.05.78 2.12v3.15c0 .31.21.66.79.55 4.52-1.5 7.77-5.76 7.77-10.78C23.33 5.56 18.27.5 12 .5z"/></svg>
+    <span>LLM-Infra-from-scratch</span>
+  </a>
+
+  <div class="page-head">
+    <h1>Model Explorer</h1>
+    <p>Walk through a Hugging Face <code>config.json</code> field by field. Each line links to a plain-English explanation and, where it applies, the exact parameter count it contributes to the model.</p>
+  </div>
+
+  <div class="model-picker-wrap">
+    <div class="model-picker" role="tablist">
+      <button type="button" data-model="gpt2" class="active">GPT-2 Small (124M)</button>
+      <button type="button" data-model="llama">Llama 3.1 8B</button>
+      <button type="button" data-model="deepseek">DeepSeek-V2 Lite (15.7B MoE)</button>
+    </div>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- VIEW 1 — GPT-2 Small (124M) -->
+  <!-- ====================================================================== -->
+  <div class="model-view" id="view-gpt2">
+
+  <div class="model-tag-wrap">
+    <span class="model-tag">Example: <code>openai-community/gpt2</code> &middot; GPT-2 Small (124M)</span>
+  </div>
+
+  <div class="col-headings">
+    <h2>config.json</h2>
+    <h2>Field explanations &amp; parameter contribution</h2>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT: config.json -->
+    <div class="config" id="config">
+      <span class="brace">{</span>
+      <div class="cfg-row" data-field="architectures"><span class="cfg-indent"></span><span class="cfg-key">"architectures"</span><span class="cfg-sep">:</span> <span class="cfg-val">["GPT2LMHeadModel"]</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="model_type"><span class="cfg-indent"></span><span class="cfg-key">"model_type"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"gpt2"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="vocab_size"><span class="cfg-indent"></span><span class="cfg-key">"vocab_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">50257</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_positions"><span class="cfg-indent"></span><span class="cfg-key">"n_positions"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1024</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_ctx"><span class="cfg-indent"></span><span class="cfg-key">"n_ctx"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1024</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_embd"><span class="cfg-indent"></span><span class="cfg-key">"n_embd"</span><span class="cfg-sep">:</span> <span class="cfg-val number">768</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_layer"><span class="cfg-indent"></span><span class="cfg-key">"n_layer"</span><span class="cfg-sep">:</span> <span class="cfg-val number">12</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_head"><span class="cfg-indent"></span><span class="cfg-key">"n_head"</span><span class="cfg-sep">:</span> <span class="cfg-val number">12</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_inner"><span class="cfg-indent"></span><span class="cfg-key">"n_inner"</span><span class="cfg-sep">:</span> <span class="cfg-val null">null</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="activation_function"><span class="cfg-indent"></span><span class="cfg-key">"activation_function"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"gelu_new"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="layer_norm_epsilon"><span class="cfg-indent"></span><span class="cfg-key">"layer_norm_epsilon"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1e-05</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="initializer_range"><span class="cfg-indent"></span><span class="cfg-key">"initializer_range"</span><span class="cfg-sep">:</span> <span class="cfg-val number">0.02</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="resid_pdrop"><span class="cfg-indent"></span><span class="cfg-key">"resid_pdrop"</span><span class="cfg-sep">:</span> <span class="cfg-val number">0.1</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="embd_pdrop"><span class="cfg-indent"></span><span class="cfg-key">"embd_pdrop"</span><span class="cfg-sep">:</span> <span class="cfg-val number">0.1</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="attn_pdrop"><span class="cfg-indent"></span><span class="cfg-key">"attn_pdrop"</span><span class="cfg-sep">:</span> <span class="cfg-val number">0.1</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="bos_token_id"><span class="cfg-indent"></span><span class="cfg-key">"bos_token_id"</span><span class="cfg-sep">:</span> <span class="cfg-val number">50256</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="eos_token_id"><span class="cfg-indent"></span><span class="cfg-key">"eos_token_id"</span><span class="cfg-sep">:</span> <span class="cfg-val number">50256</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="use_cache"><span class="cfg-indent"></span><span class="cfg-key">"use_cache"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">true</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="scale_attn_weights"><span class="cfg-indent"></span><span class="cfg-key">"scale_attn_weights"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">true</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="tie_word_embeddings"><span class="cfg-indent"></span><span class="cfg-key">"tie_word_embeddings"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">true</span></div>
+      <span class="brace">}</span>
+    </div>
+
+    <!-- RIGHT: explanations + walkthrough -->
+    <div class="right-col">
+      <div class="cards" id="cards-gpt2">
+        <!-- populated by JS -->
+      </div>
+
+      <section>
+        <div class="walkthrough-intro">
+          <h3>Walk-through — how a sentence actually flows through GPT-2</h3>
+          <p>Trace one real input through the network. Each step shows the tensor shape, the sub-layer's job, and (where applicable) the exact learnable parameters it uses. Variables: <code>V</code>=50,257 · <code>h</code>=768 · <code>P</code>=1,024 · <code>L</code>=12 · <code>n_head</code>=12 · <code>head_dim</code>=64 · <code>i</code>=3,072.</p>
+          <span class="sentence">"The cat sat on the mat"<em>T = 6 tokens</em></span>
+        </div>
+
+        <div class="wt-steps" style="margin-top: 14px;">
+
+          <!-- STEP 1 — Tokenize -->
+          <div class="wt-step">
+            <header><span class="step-num">1</span><span class="step-title">Tokenize the sentence</span></header>
+            <div class="step-body">
+              <p>The BPE tokenizer splits the text into sub-word units and maps each to an integer ID. GPT-2's vocabulary has <code>V</code>=50,257 entries.</p>
+              <div class="tokens">
+                <div class="tok">The<small>464</small></div>
+                <div class="tok">&nbsp;cat<small>3797</small></div>
+                <div class="tok">&nbsp;sat<small>3332</small></div>
+                <div class="tok">&nbsp;on<small>319</small></div>
+                <div class="tok">&nbsp;the<small>262</small></div>
+                <div class="tok">&nbsp;mat<small>2603</small></div>
+              </div>
+              <div class="shape-row">
+                <span class="shape"><span class="lbl">input_ids</span><span class="dims">[T]</span><span class="unit">= [6]</span></span>
+              </div>
+              <p>This is just integers so far — no vectors, no learnable step. <span class="param-pill zero">0 params</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 2 — Token embedding -->
+          <div class="wt-step">
+            <header><span class="step-num">2</span><span class="step-title">Token embedding (<code>wte</code>) — the learnable parameter &amp; embedding vector size</span></header>
+            <div class="step-body">
+              <p>GPT-2 keeps a learnable matrix <code>wte</code> of shape <code>[V, h]</code>. For each input ID, it looks up a row — a vector of size <code>h</code>=768. This <strong>h</strong> is the <em>embedding dimension</em> that defines how rich each token's representation is. Every weight downstream is sized relative to <code>h</code>.</p>
+              <div class="code-block"><span class="annot"># one row per token in the vocabulary</span>
+wte : <span class="var">Tensor</span>[<span class="num">V</span>, <span class="num">h</span>]   = [50257, 768]
+x   = wte[ input_ids ]   <span class="op">→</span>   <span class="var">Tensor</span>[T, h] = [6, 768]</div>
+              <div class="shape-row">
+                <span class="shape"><span class="lbl">token_emb</span><span class="dims">[T, h]</span><span class="unit">= [6, 768]</span></span>
+              </div>
+              <p>Every row of <code>wte</code> is a learnable 768-dim vector. <span class="param-pill">+38,597,376 params &nbsp;(V × h)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 3 — Position embedding -->
+          <div class="wt-step">
+            <header><span class="step-num">3</span><span class="step-title">Position embedding (<code>wpe</code>) — where in the sequence each token sits</span></header>
+            <div class="step-body">
+              <p>Attention is permutation-invariant — without positions, "cat sat" and "sat cat" would look the same. GPT-2 adds a <strong>learnable</strong> position vector for each slot 0…1023. For our 6 tokens, we take the first 6 rows of <code>wpe</code>.</p>
+              <div class="code-block">wpe : <span class="var">Tensor</span>[<span class="num">P</span>, <span class="num">h</span>]   = [1024, 768]
+pos = wpe[ 0, 1, 2, 3, 4, 5 ]   <span class="op">→</span>   <span class="var">Tensor</span>[T, h] = [6, 768]
+
+x = token_emb + pos    <span class="annot"># element-wise; shapes match: [6, 768]</span></div>
+              <div class="shape-row">
+                <span class="shape"><span class="lbl">x</span><span class="dims">[T, h]</span><span class="unit">= [6, 768]</span></span>
+              </div>
+              <p><span class="param-pill">+786,432 params &nbsp;(P × h)</span>&nbsp;&nbsp;The <code>x</code> tensor is now the input to the first transformer block.</p>
+            </div>
+          </div>
+
+          <!-- STEP 4 — Inside one block: LayerNorm 1 -->
+          <div class="wt-step">
+            <header><span class="step-num">4</span><span class="step-title">LayerNorm 1 (inside block 1) — stabilize before attention</span></header>
+            <div class="step-body">
+              <p>GPT-2 normalizes each token's 768-dim vector independently (mean + variance along <code>h</code>), then applies a learnable scale <code>γ</code> and shift <code>β</code>, each of size <code>h</code>.</p>
+              <div class="code-block">x_ln1 = LayerNorm(x; γ, β)   <span class="annot"># γ, β ∈ ℝ^768</span>
+                              <span class="annot"># shape unchanged: [6, 768]</span></div>
+              <p><span class="param-pill">+1,536 params &nbsp;(2 × h)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 5 — Q, K, V projection -->
+          <div class="wt-step">
+            <header><span class="step-num">5</span><span class="step-title">Attention: build Q, K, V from the hidden state</span></header>
+            <div class="step-body">
+              <p>GPT-2's <code>c_attn</code> is a single big linear layer that produces Q, K, V at once. It multiplies <code>x_ln1</code> (<code>[T, h]</code>) by a weight matrix <code>W_qkv</code> of shape <code>[h, 3h]</code> and adds a bias of size <code>3h</code>.</p>
+
+              <div class="substep">
+                <h4>5a — Linear projection</h4>
+                <div class="code-block">W_qkv : [<span class="num">h</span>, <span class="num">3h</span>]  = [768, 2304]
+b_qkv : [<span class="num">3h</span>]      = [2304]
+
+qkv = x_ln1 @ W_qkv + b_qkv   <span class="op">→</span>   <span class="var">Tensor</span>[T, 3h] = [6, 2304]
+Q, K, V = split(qkv, h, dim=-1)      <span class="annot"># each [6, 768]</span></div>
+                <p><span class="param-pill">+1,771,776 params &nbsp;(h × 3h + bias 3h)</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5b — Attention variant: MHA (standard Multi-Head Attention)</h4>
+                <p>GPT-2 uses the original Transformer variant: Q, K, and V all have the same number of heads (<code>n_head</code>=12). That's why <code>c_attn</code> can produce all three with a single <code>h → 3h</code> linear. Later models change this ratio to shrink the KV cache during generation.</p>
+
+                <div class="attn-variants">
+                  <div class="av-head">
+                    <span class="av-badge">this model</span>
+                    <span class="av-title">MHA — one K and V head per Q head</span>
+                  </div>
+                  <p>GPT-2 uses the original Multi-Head Attention from "Attention Is All You Need": Q, K, and V each have <code>n_head = 12</code> heads. Because K and V are the same width as Q, the model packs all three projections into the single <code>c_attn</code> matrix and splits the output into Q, K, V downstream.</p>
+                  <table>
+                    <thead>
+                      <tr><th>Variant</th><th>Q heads</th><th>K / V heads</th><th>Example models</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>MHA</td>
+                        <td>n_head</td>
+                        <td>n_head</td>
+                        <td class="models">GPT-2, GPT-3, BERT, Phi-2, Phi-1.5</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="av-note"><strong>Implication for GPT-2:</strong> K and V have the full 12 heads × 64 head_dim = 768 width. KV cache during generation stores all 12 K and 12 V heads per layer per token.</div>
+                </div>
+                <p style="margin-top: 10px;">For GPT-2, since K/V heads = Q heads = <code>n_head</code>, no special handling is needed. The next step just reshapes.</p>
+              </div>
+
+              <div class="substep">
+                <h4>5c — Split h=768 into 12 heads of 64</h4>
+                <p>Multi-head attention views the 768-dim vectors as 12 parallel "views" of 64 dims each. Pure reshape — no new parameters.</p>
+                <div class="code-block">Q = reshape(Q, [T, n_head, head_dim])  = [6, 12, 64]
+K = reshape(K, [T, 12, 64])
+V = reshape(V, [T, 12, 64])</div>
+              </div>
+
+              <div class="substep">
+                <h4>5d — Scaled dot-product attention</h4>
+                <p>For each head, compute how much every token should attend to every other token.</p>
+                <div class="code-block">scores = Q @ K.T / √head_dim   <span class="op">→</span>   <span class="var">Tensor</span>[n_head, T, T] = [12, 6, 6]
+scores = apply_causal_mask(scores)  <span class="annot"># "sat" can't see "on"/"the"/"mat"</span>
+attn   = softmax(scores, dim=-1)    <span class="annot"># rows sum to 1</span>
+
+ctx = attn @ V                 <span class="op">→</span>   <span class="var">Tensor</span>[n_head, T, head_dim] = [12, 6, 64]
+ctx = reshape(ctx, [T, h])     = [6, 768]</div>
+                <p>GPT-2 is <strong>causal</strong>: at each position the model can only attend to earlier (and the current) positions. This is what makes it a left-to-right language model. All math here is parameter-free. <span class="param-pill zero">0 params</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5e — Attention output projection (<code>c_proj</code>)</h4>
+                <div class="code-block">W_o : [<span class="num">h</span>, <span class="num">h</span>]  = [768, 768]
+b_o : [<span class="num">h</span>]     = [768]
+
+attn_out = ctx @ W_o + b_o     <span class="op">→</span>   <span class="var">Tensor</span>[T, h] = [6, 768]</div>
+                <p><span class="param-pill">+590,592 params &nbsp;(h × h + bias h)</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5f — Residual connection</h4>
+                <div class="code-block">x = x + attn_out               <span class="annot"># element-wise; [6, 768]</span></div>
+                <p><span class="param-pill zero">0 params</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 6 — LN2 + MLP -->
+          <div class="wt-step">
+            <header><span class="step-num">6</span><span class="step-title">LayerNorm 2 + MLP (feed-forward block)</span></header>
+            <div class="step-body">
+              <p>After attention mixes information across positions, the MLP processes each position independently. GPT-2's MLP is a 2-layer feed-forward: <code>h</code> → <code>4h</code> → <code>h</code> with GELU in between.</p>
+              <div class="code-block">x_ln2 = LayerNorm(x; γ', β')   <span class="annot"># +1,536 params (2 × h — scale + shift)</span>
+
+<span class="var">c_fc</span>:    W1[<span class="num">h</span>, <span class="num">4h</span>] = [768, 3072],  b1[<span class="num">4h</span>] = [3072]
+<span class="var">c_proj</span>:  W2[<span class="num">4h</span>, <span class="num">h</span>] = [3072, 768],  b2[<span class="num">h</span>] = [768]
+
+h1  = x_ln2 @ W1 + b1          <span class="op">→</span>   <span class="var">Tensor</span>[T, 4h] = [6, 3072]
+h1  = gelu(h1)                 <span class="annot"># element-wise non-linearity</span>
+mlp_out = h1 @ W2 + b2         <span class="op">→</span>   <span class="var">Tensor</span>[T, h] = [6, 768]
+
+x = x + mlp_out                <span class="annot"># residual</span></div>
+              <p>
+                <span class="param-pill">+1,536 &nbsp;(LN2)</span>&nbsp;
+                <span class="param-pill">+2,362,368 &nbsp;(c_fc)</span>&nbsp;
+                <span class="param-pill">+2,360,064 &nbsp;(c_proj)</span>
+              </p>
+              <p>Running total for <strong>one</strong> transformer block: <code>LN1 + c_attn + attn_out + LN2 + c_fc + c_proj = 1,536 + 1,771,776 + 590,592 + 1,536 + 2,362,368 + 2,360,064 = <strong>7,087,872</strong> params</code>.</p>
+            </div>
+          </div>
+
+          <!-- STEP 7 — Repeat for all layers -->
+          <div class="wt-step">
+            <header><span class="step-num">7</span><span class="step-title">Stack 12 of these blocks</span></header>
+            <div class="step-body">
+              <p>Steps 4–6 are one transformer block. GPT-2 Small stacks <code>L=12</code> of them, each with its own independent set of weights. The hidden state shape stays <code>[T, h]</code> all the way through.</p>
+              <div class="code-block">for layer in range(<span class="num">L</span>):  <span class="annot"># L = 12</span>
+    x = block_{layer}(x)   <span class="annot"># shape unchanged: [6, 768]</span></div>
+              <p><span class="param-pill">+85,054,464 params &nbsp;(L × 7,087,872)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 8 — Final LN + LM head -->
+          <div class="wt-step">
+            <header><span class="step-num">8</span><span class="step-title">Final LayerNorm &amp; LM head — produce next-token logits</span></header>
+            <div class="step-body">
+              <p>One last LayerNorm, then project the hidden state down the vocabulary dimension. GPT-2 <strong>ties</strong> the LM-head weight with <code>wte</code> from step 2 — the exact same parameters are reused, so no new weights are added.</p>
+              <div class="code-block">x = LayerNorm(x; γ_f, β_f)     <span class="annot"># +1,536 params (2 × h — scale + shift)</span>
+
+<span class="annot"># LM head reuses wte — weight sharing, not a new matrix</span>
+logits = x @ wte.T             <span class="op">→</span>   <span class="var">Tensor</span>[T, V] = [6, 50257]
+probs  = softmax(logits[-1])   <span class="annot"># distribution over the next token</span></div>
+              <p><span class="param-pill">+1,536 &nbsp;(final LN)</span>&nbsp;&nbsp;<span class="param-pill zero">+0 &nbsp;(LM head, tied)</span></p>
+              <p>For our example, <code>probs</code> is the distribution GPT-2 would use to pick what comes after "mat" — hopefully something sentence-ending like a period.</p>
+            </div>
+          </div>
+
+          <!-- STEP 9 — Total -->
+          <div class="wt-step">
+            <header><span class="step-num">9</span><span class="step-title">Add it all up</span></header>
+            <div class="step-body">
+              <div class="code-block">token_emb       :     38,597,376   <span class="annot"># V × h</span>
+pos_emb         :        786,432   <span class="annot"># P × h</span>
+12 × block      :     85,054,464   <span class="annot"># L × 7,087,872</span>
+final_ln        :          1,536   <span class="annot"># 2 × h</span>
+lm_head (tied)  :              0   <span class="annot"># shares wte</span>
+───────────────────────────────
+total           :    124,439,808</div>
+              <p>This matches <code>model.num_parameters()</code> on the HF checkpoint exactly — that's the 124M in "GPT-2 Small (124M)".</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  </div><!-- /view-gpt2 -->
+
+  <!-- ====================================================================== -->
+  <!-- VIEW 2 — Llama 3.1 8B -->
+  <!-- ====================================================================== -->
+  <div class="model-view" id="view-llama" hidden>
+
+  <div class="model-tag-wrap">
+    <span class="model-tag">Example: <code>meta-llama/Llama-3.1-8B</code> &middot; Llama 3.1 8B</span>
+  </div>
+
+  <div class="col-headings">
+    <h2>config.json</h2>
+    <h2>Field explanations &amp; parameter contribution</h2>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT: Llama config -->
+    <div class="config" id="config-llama">
+      <span class="brace">{</span>
+      <div class="cfg-row" data-field="architectures"><span class="cfg-indent"></span><span class="cfg-key">"architectures"</span><span class="cfg-sep">:</span> <span class="cfg-val">["LlamaForCausalLM"]</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="model_type"><span class="cfg-indent"></span><span class="cfg-key">"model_type"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"llama"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="vocab_size"><span class="cfg-indent"></span><span class="cfg-key">"vocab_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">128256</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="hidden_size"><span class="cfg-indent"></span><span class="cfg-key">"hidden_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">4096</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="intermediate_size"><span class="cfg-indent"></span><span class="cfg-key">"intermediate_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">14336</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="num_hidden_layers"><span class="cfg-indent"></span><span class="cfg-key">"num_hidden_layers"</span><span class="cfg-sep">:</span> <span class="cfg-val number">32</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="num_attention_heads"><span class="cfg-indent"></span><span class="cfg-key">"num_attention_heads"</span><span class="cfg-sep">:</span> <span class="cfg-val number">32</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="num_key_value_heads"><span class="cfg-indent"></span><span class="cfg-key">"num_key_value_heads"</span><span class="cfg-sep">:</span> <span class="cfg-val number">8</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="head_dim"><span class="cfg-indent"></span><span class="cfg-key">"head_dim"</span><span class="cfg-sep">:</span> <span class="cfg-val number">128</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="max_position_embeddings"><span class="cfg-indent"></span><span class="cfg-key">"max_position_embeddings"</span><span class="cfg-sep">:</span> <span class="cfg-val number">131072</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="rope_theta"><span class="cfg-indent"></span><span class="cfg-key">"rope_theta"</span><span class="cfg-sep">:</span> <span class="cfg-val number">500000.0</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="rope_scaling"><span class="cfg-indent"></span><span class="cfg-key">"rope_scaling"</span><span class="cfg-sep">:</span> <span class="cfg-val">{"rope_type":"llama3","factor":8.0,…}</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="rms_norm_eps"><span class="cfg-indent"></span><span class="cfg-key">"rms_norm_eps"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1e-05</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="hidden_act"><span class="cfg-indent"></span><span class="cfg-key">"hidden_act"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"silu"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="tie_word_embeddings"><span class="cfg-indent"></span><span class="cfg-key">"tie_word_embeddings"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">false</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="attention_bias"><span class="cfg-indent"></span><span class="cfg-key">"attention_bias"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">false</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="mlp_bias"><span class="cfg-indent"></span><span class="cfg-key">"mlp_bias"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">false</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="bos_token_id"><span class="cfg-indent"></span><span class="cfg-key">"bos_token_id"</span><span class="cfg-sep">:</span> <span class="cfg-val number">128000</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="eos_token_id"><span class="cfg-indent"></span><span class="cfg-key">"eos_token_id"</span><span class="cfg-sep">:</span> <span class="cfg-val number">128001</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="use_cache"><span class="cfg-indent"></span><span class="cfg-key">"use_cache"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">true</span></div>
+      <span class="brace">}</span>
+    </div>
+
+    <!-- RIGHT: Llama cards + walkthrough -->
+    <div class="right-col">
+      <div class="cards" id="cards-llama">
+        <!-- populated by JS -->
+      </div>
+
+      <section>
+        <div class="walkthrough-intro">
+          <h3>Walk-through — how a sentence flows through Llama 3.1 8B</h3>
+          <p>Trace one real input through the network. Variables: <code>V</code>=128,256 · <code>h</code>=4,096 · <code>L</code>=32 · <code>i</code>=14,336 · <code>n_head</code>=32 (Q heads) · <code>n_kv_heads</code>=8 (K/V heads) · <code>head_dim</code>=128.</p>
+          <span class="sentence">"The cat sat on the mat"<em>T = 6 tokens</em></span>
+        </div>
+
+        <div class="wt-steps" style="margin-top: 14px;">
+
+          <!-- STEP 1 — Tokenize -->
+          <div class="wt-step">
+            <header><span class="step-num">1</span><span class="step-title">Tokenize with the Llama 3 tokenizer</span></header>
+            <div class="step-body">
+              <p>Llama 3 uses a tiktoken-style BPE tokenizer with a <code>V</code>=128,256 vocabulary — much larger than GPT-2's 50k. Larger vocab means fewer tokens per word and better multilingual coverage.</p>
+              <div class="tokens">
+                <div class="tok">The<small>791</small></div>
+                <div class="tok">&nbsp;cat<small>8415</small></div>
+                <div class="tok">&nbsp;sat<small>7731</small></div>
+                <div class="tok">&nbsp;on<small>389</small></div>
+                <div class="tok">&nbsp;the<small>279</small></div>
+                <div class="tok">&nbsp;mat<small>20920</small></div>
+              </div>
+              <div class="shape-row">
+                <span class="shape"><span class="lbl">input_ids</span><span class="dims">[T]</span><span class="unit">= [6]</span></span>
+              </div>
+              <p><span class="param-pill zero">0 params</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 2 — Token embedding -->
+          <div class="wt-step">
+            <header><span class="step-num">2</span><span class="step-title">Token embedding (<code>embed_tokens</code>) — the learnable vector per token</span></header>
+            <div class="step-body">
+              <p>A learnable matrix <code>embed_tokens</code> of shape <code>[V, h]</code>. Each input ID looks up one row — a vector of size <code>h</code>=4,096. The hidden size is <strong>5.3× wider</strong> than GPT-2 Small (768), which is where most of Llama's capacity lives.</p>
+              <div class="code-block">embed_tokens : <span class="var">Tensor</span>[<span class="num">V</span>, <span class="num">h</span>]  = [128256, 4096]
+x = embed_tokens[ input_ids ]   <span class="op">→</span>   <span class="var">Tensor</span>[T, h] = [6, 4096]</div>
+              <p><span class="param-pill">+525,336,576 params &nbsp;(V × h)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 3 — No pos embedding, RoPE later -->
+          <div class="wt-step">
+            <header><span class="step-num">3</span><span class="step-title">Position information — <strong>RoPE, not a learned table</strong></span></header>
+            <div class="step-body">
+              <p>Unlike GPT-2, Llama has <strong>no position embedding table</strong>. Instead, each attention layer injects position info by <em>rotating</em> Q and K vectors (Rotary Positional Embeddings). The rotation angles are pre-computed from <code>rope_theta=500,000</code> and the token position — no learnable parameters.</p>
+              <div class="code-block"><span class="annot"># Position is applied later, inside each attention block (step 5d).</span>
+<span class="annot"># No table, no lookup, no weights.</span></div>
+              <p><span class="param-pill zero">0 params</span>&nbsp;&nbsp;This is why Llama can extend to 131,072 tokens of context — no fixed table caps the length.</p>
+            </div>
+          </div>
+
+          <!-- STEP 4 — RMSNorm -->
+          <div class="wt-step">
+            <header><span class="step-num">4</span><span class="step-title">RMSNorm (pre-attention) — simpler than LayerNorm</span></header>
+            <div class="step-body">
+              <p>Llama uses <strong>RMSNorm</strong> instead of LayerNorm. Only a scale parameter <code>γ</code> of size <code>h</code> — no shift <code>β</code>, no mean subtraction. Half the params and slightly faster.</p>
+              <div class="code-block">x_norm = x / rms(x) · γ        <span class="annot"># γ ∈ ℝ^4096, no β</span>
+                              <span class="annot"># shape unchanged: [6, 4096]</span></div>
+              <p><span class="param-pill">+4,096 params &nbsp;(h — scale only)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 5 — Attention -->
+          <div class="wt-step">
+            <header><span class="step-num">5</span><span class="step-title">Attention: Grouped-Query (GQA) with 32 Q heads and 8 K/V heads</span></header>
+            <div class="step-body">
+              <p>Llama uses GQA to shrink KV cache during generation. Q has 32 heads (full width <code>h</code>=4,096), but K and V share just 8 heads each — 4× smaller than Q.</p>
+
+              <div class="substep">
+                <h4>5a — Three separate linear projections (no bias!)</h4>
+                <p>Because K and V are narrower than Q, they can't be packed into one combined <code>c_attn</code> matrix like GPT-2. Llama uses three <strong>separate</strong> linears, all with <code>attention_bias: false</code>.</p>
+                <div class="code-block">q_proj : [<span class="num">h</span>, <span class="num">n_head × head_dim</span>]           = [4096, 4096]
+k_proj : [<span class="num">h</span>, <span class="num">n_kv_heads × head_dim</span>]        = [4096, 1024]
+v_proj : [<span class="num">h</span>, <span class="num">n_kv_heads × head_dim</span>]        = [4096, 1024]
+
+Q = x_norm @ q_proj    <span class="op">→</span>   [T, 4096]
+K = x_norm @ k_proj    <span class="op">→</span>   [T, 1024]
+V = x_norm @ v_proj    <span class="op">→</span>   [T, 1024]</div>
+                <p>
+                  <span class="param-pill">+16,777,216 &nbsp;(q_proj: h × h)</span>&nbsp;
+                  <span class="param-pill">+4,194,304 &nbsp;(k_proj: h × h/4)</span>&nbsp;
+                  <span class="param-pill">+4,194,304 &nbsp;(v_proj: h × h/4)</span>
+                </p>
+              </div>
+
+              <div class="substep">
+                <h4>5b — Attention variant: GQA</h4>
+
+                <div class="attn-variants">
+                  <div class="av-head">
+                    <span class="av-badge">this model</span>
+                    <span class="av-title">GQA — K/V share across groups of Q heads</span>
+                  </div>
+                  <p>Llama 3.1 8B shares each K/V head across <code>n_head / n_kv_heads = 32 / 8 = 4</code> Q heads. During generation, only 8 K and 8 V vectors are cached per token per layer instead of 32 → <strong>4× smaller KV cache</strong>.</p>
+                  <table>
+                    <thead>
+                      <tr><th>Variant</th><th>Q heads</th><th>K / V heads</th><th>Example models</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>GQA</td>
+                        <td>n_head</td>
+                        <td>n_kv_heads &lt; n_head</td>
+                        <td class="models">Llama 2/3, Mistral, Qwen 2.5, Gemma 2</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="av-note"><strong>KV cache per token per layer:</strong> 2 × n_kv_heads × head_dim × bytes = 2 × 8 × 128 × 2 = <strong>4,096 bytes</strong> (bf16). With MHA it would be 16,384 bytes.</div>
+                </div>
+              </div>
+
+              <div class="substep">
+                <h4>5c — Reshape into heads</h4>
+                <div class="code-block">Q = reshape(Q, [T, n_head,    head_dim])  = [6, 32, 128]
+K = reshape(K, [T, n_kv_heads, head_dim])  = [6,  8, 128]
+V = reshape(V, [T, n_kv_heads, head_dim])  = [6,  8, 128]</div>
+              </div>
+
+              <div class="substep">
+                <h4>5d — Apply RoPE rotations to Q and K</h4>
+                <p>Rotate each pair of dims in Q and K by an angle that depends on the token's position. This is how Llama "sees" order. V is untouched. No learnable parameters.</p>
+                <div class="code-block">Q = apply_rope(Q, positions=[0..5], base=rope_theta)
+K = apply_rope(K, positions=[0..5], base=rope_theta)
+                                      <span class="annot"># shapes unchanged</span></div>
+                <p><span class="param-pill zero">0 params</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5e — Broadcast K/V to match Q heads, then attention</h4>
+                <p>Each K/V head is logically shared with 4 Q heads. In code this is usually a cheap <code>.repeat_interleave(4, dim=1)</code> or an einsum that avoids the copy. No new params.</p>
+                <div class="code-block">K_broadcast = K.repeat_interleave(4, dim=1)   <span class="op">→</span>   [6, 32, 128]
+V_broadcast = V.repeat_interleave(4, dim=1)   <span class="op">→</span>   [6, 32, 128]
+
+scores = Q @ K_broadcast.T / √head_dim        <span class="op">→</span>   [n_head, T, T] = [32, 6, 6]
+scores = apply_causal_mask(scores)
+attn   = softmax(scores, dim=-1)
+ctx    = attn @ V_broadcast                   <span class="op">→</span>   [32, 6, 128]
+ctx    = reshape(ctx, [T, h])                 = [6, 4096]</div>
+                <p><span class="param-pill zero">0 params</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5f — Output projection (<code>o_proj</code>, no bias)</h4>
+                <div class="code-block">o_proj : [<span class="num">h</span>, <span class="num">h</span>]  = [4096, 4096]
+attn_out = ctx @ o_proj   <span class="op">→</span>   [T, h] = [6, 4096]</div>
+                <p><span class="param-pill">+16,777,216 params &nbsp;(h × h, no bias)</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5g — Residual connection</h4>
+                <div class="code-block">x = x + attn_out       <span class="annot"># shape [6, 4096]</span></div>
+                <p><span class="param-pill zero">0 params</span></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 6 — RMSNorm 2 + SwiGLU MLP -->
+          <div class="wt-step">
+            <header><span class="step-num">6</span><span class="step-title">RMSNorm 2 + SwiGLU MLP — three matrices, not two</span></header>
+            <div class="step-body">
+              <p>Llama uses <strong>SwiGLU</strong> instead of GPT-2's simple GELU-MLP. SwiGLU needs <strong>three</strong> matrices: <code>gate_proj</code> and <code>up_proj</code> both expand <code>h → i</code>, then <code>down_proj</code> brings it back. <code>mlp_bias: false</code> — no biases anywhere.</p>
+              <div class="code-block">x_norm2 = RMSNorm(x; γ')         <span class="annot"># +4,096 params (h)</span>
+
+gate_proj : [<span class="num">h</span>, <span class="num">i</span>]  = [4096, 14336]      <span class="annot"># "gate"</span>
+up_proj   : [<span class="num">h</span>, <span class="num">i</span>]  = [4096, 14336]      <span class="annot"># "up"</span>
+down_proj : [<span class="num">i</span>, <span class="num">h</span>]  = [14336, 4096]      <span class="annot"># "down"</span>
+
+g = silu(x_norm2 @ gate_proj)    <span class="op">→</span>   [T, i] = [6, 14336]
+u = x_norm2 @ up_proj            <span class="op">→</span>   [T, i] = [6, 14336]
+h1 = g * u                       <span class="annot"># element-wise gate</span>
+mlp_out = h1 @ down_proj         <span class="op">→</span>   [T, h] = [6, 4096]
+
+x = x + mlp_out                  <span class="annot"># residual</span></div>
+              <p>
+                <span class="param-pill">+4,096 &nbsp;(RMSNorm 2)</span>&nbsp;
+                <span class="param-pill">+58,720,256 &nbsp;(gate_proj: h × i)</span>&nbsp;
+                <span class="param-pill">+58,720,256 &nbsp;(up_proj)</span>&nbsp;
+                <span class="param-pill">+58,720,256 &nbsp;(down_proj: i × h)</span>
+              </p>
+              <p>Running total for <strong>one</strong> transformer block: <code>4,096 (RMSNorm1) + 16,777,216 + 4,194,304 + 4,194,304 + 16,777,216 (Q/K/V/O) + 4,096 (RMSNorm2) + 3 × 58,720,256 (MLP) = <strong>218,112,000</strong> params</code>.</p>
+            </div>
+          </div>
+
+          <!-- STEP 7 — Stack blocks -->
+          <div class="wt-step">
+            <header><span class="step-num">7</span><span class="step-title">Stack 32 of these blocks</span></header>
+            <div class="step-body">
+              <p>Steps 4–6 make one transformer block. Llama 3.1 8B stacks <code>L</code>=32 of them, each with its own independent weights. The hidden state shape stays <code>[T, h]</code> all the way through.</p>
+              <div class="code-block">for layer in range(<span class="num">L</span>):  <span class="annot"># L = 32</span>
+    x = block_{layer}(x)   <span class="annot"># shape unchanged: [6, 4096]</span></div>
+              <p><span class="param-pill">+6,979,584,000 params &nbsp;(L × 218,112,000)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 8 — Final RMSNorm + LM head -->
+          <div class="wt-step">
+            <header><span class="step-num">8</span><span class="step-title">Final RMSNorm &amp; LM head — <strong>not</strong> tied in Llama</span></header>
+            <div class="step-body">
+              <p>One last RMSNorm, then a projection down the vocabulary dimension. Llama 3.1 sets <code>tie_word_embeddings: false</code>, so <code>lm_head</code> is a <strong>separate</strong> matrix of shape <code>[h, V]</code> — not shared with the input embedding. That's another <code>V × h</code> worth of parameters.</p>
+              <div class="code-block">x = RMSNorm(x; γ_f)              <span class="annot"># +4,096 params (h)</span>
+
+lm_head : [<span class="num">h</span>, <span class="num">V</span>]  = [4096, 128256]  <span class="annot"># its own weights</span>
+logits = x @ lm_head             <span class="op">→</span>   [T, V] = [6, 128256]
+probs  = softmax(logits[-1])     <span class="annot"># distribution over the next token</span></div>
+              <p>
+                <span class="param-pill">+4,096 &nbsp;(final RMSNorm)</span>&nbsp;
+                <span class="param-pill">+525,336,576 &nbsp;(lm_head: h × V, not tied)</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- STEP 9 — Total -->
+          <div class="wt-step">
+            <header><span class="step-num">9</span><span class="step-title">Add it all up</span></header>
+            <div class="step-body">
+              <div class="code-block">embed_tokens  :       525,336,576   <span class="annot"># V × h</span>
+32 × block    :     6,979,584,000   <span class="annot"># L × 218,112,000</span>
+final_rmsnorm :             4,096   <span class="annot"># h</span>
+lm_head       :       525,336,576   <span class="annot"># V × h, not tied</span>
+──────────────────────────────────
+total         :     8,030,261,248</div>
+              <p>This matches <code>model.num_parameters()</code> on the HF checkpoint exactly — that's the 8B in "Llama 3.1 8B".</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  </div><!-- /view-llama -->
+
+  <!-- ====================================================================== -->
+  <!-- VIEW 3 — DeepSeek-V2 Lite (15.7B MoE) -->
+  <!-- ====================================================================== -->
+  <div class="model-view" id="view-deepseek" hidden>
+
+  <div class="model-tag-wrap">
+    <span class="model-tag">Example: <code>deepseek-ai/DeepSeek-V2-Lite</code> &middot; 15.7B total · 2.4B active per token</span>
+  </div>
+
+  <div class="col-headings">
+    <h2>config.json</h2>
+    <h2>Field explanations &amp; parameter contribution</h2>
+  </div>
+
+  <div class="layout">
+    <!-- LEFT: DeepSeek config -->
+    <div class="config" id="config-deepseek">
+      <span class="brace">{</span>
+      <div class="cfg-row" data-field="architectures"><span class="cfg-indent"></span><span class="cfg-key">"architectures"</span><span class="cfg-sep">:</span> <span class="cfg-val">["DeepseekV2ForCausalLM"]</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="model_type"><span class="cfg-indent"></span><span class="cfg-key">"model_type"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"deepseek_v2"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="vocab_size"><span class="cfg-indent"></span><span class="cfg-key">"vocab_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">102400</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="hidden_size"><span class="cfg-indent"></span><span class="cfg-key">"hidden_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">2048</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="num_hidden_layers"><span class="cfg-indent"></span><span class="cfg-key">"num_hidden_layers"</span><span class="cfg-sep">:</span> <span class="cfg-val number">27</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="num_attention_heads"><span class="cfg-indent"></span><span class="cfg-key">"num_attention_heads"</span><span class="cfg-sep">:</span> <span class="cfg-val number">16</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="q_lora_rank"><span class="cfg-indent"></span><span class="cfg-key">"q_lora_rank"</span><span class="cfg-sep">:</span> <span class="cfg-val null">null</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="kv_lora_rank"><span class="cfg-indent"></span><span class="cfg-key">"kv_lora_rank"</span><span class="cfg-sep">:</span> <span class="cfg-val number">512</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="qk_nope_head_dim"><span class="cfg-indent"></span><span class="cfg-key">"qk_nope_head_dim"</span><span class="cfg-sep">:</span> <span class="cfg-val number">128</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="qk_rope_head_dim"><span class="cfg-indent"></span><span class="cfg-key">"qk_rope_head_dim"</span><span class="cfg-sep">:</span> <span class="cfg-val number">64</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="v_head_dim"><span class="cfg-indent"></span><span class="cfg-key">"v_head_dim"</span><span class="cfg-sep">:</span> <span class="cfg-val number">128</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="first_k_dense_replace"><span class="cfg-indent"></span><span class="cfg-key">"first_k_dense_replace"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="intermediate_size"><span class="cfg-indent"></span><span class="cfg-key">"intermediate_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">10944</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="moe_intermediate_size"><span class="cfg-indent"></span><span class="cfg-key">"moe_intermediate_size"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1408</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_routed_experts"><span class="cfg-indent"></span><span class="cfg-key">"n_routed_experts"</span><span class="cfg-sep">:</span> <span class="cfg-val number">64</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="n_shared_experts"><span class="cfg-indent"></span><span class="cfg-key">"n_shared_experts"</span><span class="cfg-sep">:</span> <span class="cfg-val number">2</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="num_experts_per_tok"><span class="cfg-indent"></span><span class="cfg-key">"num_experts_per_tok"</span><span class="cfg-sep">:</span> <span class="cfg-val number">6</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="moe_layer_freq"><span class="cfg-indent"></span><span class="cfg-key">"moe_layer_freq"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="topk_method"><span class="cfg-indent"></span><span class="cfg-key">"topk_method"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"greedy"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="scoring_func"><span class="cfg-indent"></span><span class="cfg-key">"scoring_func"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"softmax"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="aux_loss_alpha"><span class="cfg-indent"></span><span class="cfg-key">"aux_loss_alpha"</span><span class="cfg-sep">:</span> <span class="cfg-val number">0.001</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="max_position_embeddings"><span class="cfg-indent"></span><span class="cfg-key">"max_position_embeddings"</span><span class="cfg-sep">:</span> <span class="cfg-val number">163840</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="rope_theta"><span class="cfg-indent"></span><span class="cfg-key">"rope_theta"</span><span class="cfg-sep">:</span> <span class="cfg-val number">10000</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="rope_scaling"><span class="cfg-indent"></span><span class="cfg-key">"rope_scaling"</span><span class="cfg-sep">:</span> <span class="cfg-val">{"type":"yarn","factor":40,…}</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="rms_norm_eps"><span class="cfg-indent"></span><span class="cfg-key">"rms_norm_eps"</span><span class="cfg-sep">:</span> <span class="cfg-val number">1e-06</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="hidden_act"><span class="cfg-indent"></span><span class="cfg-key">"hidden_act"</span><span class="cfg-sep">:</span> <span class="cfg-val string">"silu"</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="tie_word_embeddings"><span class="cfg-indent"></span><span class="cfg-key">"tie_word_embeddings"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">false</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="attention_bias"><span class="cfg-indent"></span><span class="cfg-key">"attention_bias"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">false</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="bos_token_id"><span class="cfg-indent"></span><span class="cfg-key">"bos_token_id"</span><span class="cfg-sep">:</span> <span class="cfg-val number">100000</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="eos_token_id"><span class="cfg-indent"></span><span class="cfg-key">"eos_token_id"</span><span class="cfg-sep">:</span> <span class="cfg-val number">100001</span><span class="cfg-comma">,</span></div>
+      <div class="cfg-row" data-field="use_cache"><span class="cfg-indent"></span><span class="cfg-key">"use_cache"</span><span class="cfg-sep">:</span> <span class="cfg-val boolean">true</span></div>
+      <span class="brace">}</span>
+    </div>
+
+    <!-- RIGHT: DeepSeek cards + walkthrough -->
+    <div class="right-col">
+      <div class="cards" id="cards-deepseek">
+        <!-- populated by JS -->
+      </div>
+
+      <section>
+        <div class="walkthrough-intro">
+          <h3>Walk-through — a sentence through DeepSeek-V2 Lite (MLA + MoE)</h3>
+          <p>Two big new ideas: <strong>MLA</strong> replaces per-head K/V with a shared low-rank latent (massive KV cache savings), and <strong>MoE</strong> replaces most MLPs with a sparse mixture of experts (15.7B weights total, only 2.4B active per token). Variables: <code>V</code>=102,400 · <code>h</code>=2,048 · <code>L</code>=27 · <code>n_head</code>=16 · <code>kv_lora_rank</code>=512 · <code>qk_nope</code>=128 · <code>qk_rope</code>=64 · <code>v_head_dim</code>=128 · dense <code>i</code>=10,944 · MoE <code>moe_i</code>=1,408 · routed experts=64 · shared=2 · top-k=6.</p>
+          <span class="sentence">"The cat sat on the mat"<em>T = 6 tokens</em></span>
+        </div>
+
+        <div class="wt-steps" style="margin-top: 14px;">
+
+          <!-- STEP 1 — Tokenize -->
+          <div class="wt-step">
+            <header><span class="step-num">1</span><span class="step-title">Tokenize with the DeepSeek tokenizer</span></header>
+            <div class="step-body">
+              <p>A BPE tokenizer with <code>V</code>=102,400 — about 2× GPT-2's vocab, smaller than Llama 3's 128K. Tuned for Chinese-English mixed content.</p>
+              <div class="tokens">
+                <div class="tok">The<small>894</small></div>
+                <div class="tok">&nbsp;cat<small>5678</small></div>
+                <div class="tok">&nbsp;sat<small>5522</small></div>
+                <div class="tok">&nbsp;on<small>441</small></div>
+                <div class="tok">&nbsp;the<small>317</small></div>
+                <div class="tok">&nbsp;mat<small>8920</small></div>
+              </div>
+              <div class="shape-row">
+                <span class="shape"><span class="lbl">input_ids</span><span class="dims">[T]</span><span class="unit">= [6]</span></span>
+              </div>
+              <p><span class="param-pill zero">0 params</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 2 — Token embedding -->
+          <div class="wt-step">
+            <header><span class="step-num">2</span><span class="step-title">Token embedding (<code>embed_tokens</code>)</span></header>
+            <div class="step-body">
+              <div class="code-block">embed_tokens : <span class="var">Tensor</span>[<span class="num">V</span>, <span class="num">h</span>]  = [102400, 2048]
+x = embed_tokens[ input_ids ]   <span class="op">→</span>   <span class="var">Tensor</span>[T, h] = [6, 2048]</div>
+              <p><span class="param-pill">+209,715,200 params &nbsp;(V × h)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 3 — RoPE + YaRN -->
+          <div class="wt-step">
+            <header><span class="step-num">3</span><span class="step-title">Position information — RoPE with YaRN scaling</span></header>
+            <div class="step-body">
+              <p>Same idea as Llama — positions are injected inside attention via rotations, not a learned table. DeepSeek-V2 Lite uses <strong>YaRN</strong> to extend the RoPE positions from 4K (pretraining) to 163K (deployment). YaRN interpolates low-frequency dims and keeps high-frequency ones so attention remains well-behaved at long context.</p>
+              <p><span class="param-pill zero">0 params</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 4 — RMSNorm -->
+          <div class="wt-step">
+            <header><span class="step-num">4</span><span class="step-title">RMSNorm (pre-attention)</span></header>
+            <div class="step-body">
+              <div class="code-block">x_norm = x / rms(x) · γ        <span class="annot"># γ ∈ ℝ^2048, no β</span></div>
+              <p><span class="param-pill">+2,048 params &nbsp;(h)</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 5 — MLA Attention -->
+          <div class="wt-step">
+            <header><span class="step-num">5</span><span class="step-title">Attention: <strong>MLA</strong> (Multi-head Latent Attention)</span></header>
+            <div class="step-body">
+              <p>MLA is the single biggest architectural win in DeepSeek-V2. Instead of storing one K and one V vector <strong>per head</strong> per token (as MHA and GQA do), it compresses the whole K/V representation into a shared <strong>low-rank latent</strong>. The KV cache stores just this latent + a tiny RoPE sidecar.</p>
+
+              <div class="substep">
+                <h4>5a — Attention variant: MLA</h4>
+
+                <div class="attn-variants">
+                  <div class="av-head">
+                    <span class="av-badge">this model</span>
+                    <span class="av-title">MLA — one latent cache per token, shared across all heads</span>
+                  </div>
+                  <p>MLA factorizes the K/V projections through a low-rank bottleneck (<code>kv_lora_rank</code>=512). During inference, only the compressed latent is cached — the up-projection to per-head K and V is recomputed from it each step. A small <code>qk_rope_head_dim</code>=64 "decoupled" K component carries the RoPE rotations.</p>
+                  <table>
+                    <thead>
+                      <tr><th>Variant</th><th>Cache per token per layer (scalars)</th><th>DeepSeek-V2 Lite</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>MLA</td>
+                        <td>kv_lora_rank + qk_rope_head_dim</td>
+                        <td class="models">512 + 64 = 576</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="av-note"><strong>KV cache comparison:</strong> for the same 16 heads × 128 head_dim = 2,048 scalars per layer that MHA would cache, MLA caches just <strong>576</strong> — about <strong>3.6× smaller</strong> — and that ratio grows as you'd add more heads.</div>
+                </div>
+              </div>
+
+              <div class="substep">
+                <h4>5b — Q projection (direct, no compression in Lite)</h4>
+                <p>The full DeepSeek-V2 also compresses Q via <code>q_lora_rank</code>, but Lite sets it to <code>null</code> — Q goes straight from <code>h</code> to the per-head Q space. Each head carries a 128-dim "no-rope" slice and a 64-dim "rope" slice (total 192 dims per head).</p>
+                <div class="code-block">q_proj : [<span class="num">h</span>, <span class="num">n_head × (qk_nope + qk_rope)</span>]
+       = [2048, 16 × (128 + 64)] = [2048, 3072]
+
+Q = x_norm @ q_proj     <span class="op">→</span>   [T, 3072] = [6, 3072]</div>
+                <p><span class="param-pill">+6,291,456 params &nbsp;(h × n_head × 192)</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5c — K/V compression: produce the shared latent + decoupled RoPE K</h4>
+                <p>One linear maps <code>h</code> down to the compressed KV latent <strong>plus</strong> the small RoPE-K sidecar. This latent (512 dims) is what gets cached — it's model-wide, not per-head.</p>
+                <div class="code-block">kv_a_proj : [<span class="num">h</span>, <span class="num">kv_lora_rank + qk_rope</span>]
+          = [2048, 512 + 64] = [2048, 576]
+
+kv_a_out = x_norm @ kv_a_proj             <span class="op">→</span>   [T, 576]
+compressed_kv = kv_a_out[:, :512]         <span class="annot"># latent — cached!</span>
+k_pe          = kv_a_out[:, 512:]         <span class="annot"># decoupled RoPE K — also cached</span></div>
+                <p><span class="param-pill">+1,179,648 params &nbsp;(h × (kv_lora_rank + qk_rope))</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5d — RMSNorm the latent, then up-project to per-head K and V</h4>
+                <p>The latent is normalized before being expanded into per-head K (no-rope part) and V. The up-projection is only used during the forward pass — never cached.</p>
+                <div class="code-block">kv_a_layernorm : γ ∈ ℝ^<span class="num">kv_lora_rank</span>  = ℝ^512      <span class="annot"># +512 params</span>
+compressed_kv = RMSNorm(compressed_kv; γ)
+
+kv_b_proj : [<span class="num">kv_lora_rank</span>, <span class="num">n_head × (qk_nope + v_head_dim)</span>]
+          = [512, 16 × (128 + 128)] = [512, 4096]
+
+kv_b_out = compressed_kv @ kv_b_proj      <span class="op">→</span>   [T, 4096]
+K_nope = kv_b_out[:, :16·128]             <span class="annot"># per-head K (no-rope)</span>
+V      = kv_b_out[:, 16·128:]             <span class="annot"># per-head V</span></div>
+                <p>
+                  <span class="param-pill">+512 &nbsp;(kv_a_layernorm)</span>&nbsp;
+                  <span class="param-pill">+2,097,152 &nbsp;(kv_b_proj: 512 × 4,096)</span>
+                </p>
+              </div>
+
+              <div class="substep">
+                <h4>5e — Reshape, apply RoPE, and concatenate</h4>
+                <p>Q splits per head into a no-rope part (128 dims) and a rope part (64 dims). K similarly is <code>[K_nope | K_rope]</code>, where <code>K_rope</code> is <code>k_pe</code> broadcast across all 16 heads. Only the rope slices get rotated.</p>
+                <div class="code-block">Q = reshape(Q, [T, n_head, qk_nope + qk_rope]) = [6, 16, 192]
+Q_nope, Q_rope = split(Q, [128, 64], dim=-1)   <span class="op">→</span>   [6, 16, 128] + [6, 16, 64]
+
+K_nope = reshape(K_nope, [T, n_head, qk_nope]) = [6, 16, 128]
+K_rope = broadcast(k_pe, n_head)               = [6, 16, 64]
+
+Q_rope = apply_rope(Q_rope, positions=[0..5])
+K_rope = apply_rope(K_rope, positions=[0..5])
+
+Q = concat([Q_nope, Q_rope], dim=-1)           = [6, 16, 192]
+K = concat([K_nope, K_rope], dim=-1)           = [6, 16, 192]
+V = reshape(V, [T, n_head, v_head_dim])        = [6, 16, 128]</div>
+                <p><span class="param-pill zero">0 params</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5f — Scaled dot-product attention</h4>
+                <div class="code-block">scores = Q @ K.T / √(qk_nope + qk_rope)    <span class="op">→</span>   [16, 6, 6]
+scores = apply_causal_mask(scores)
+attn   = softmax(scores, dim=-1)
+ctx    = attn @ V                           <span class="op">→</span>   [16, 6, 128]
+ctx    = reshape(ctx, [T, n_head × v_head_dim])  = [6, 2048]</div>
+                <p><span class="param-pill zero">0 params</span></p>
+              </div>
+
+              <div class="substep">
+                <h4>5g — Output projection + residual</h4>
+                <div class="code-block">o_proj : [<span class="num">n_head × v_head_dim</span>, <span class="num">h</span>] = [2048, 2048]
+attn_out = ctx @ o_proj    <span class="op">→</span>   [T, h] = [6, 2048]
+x = x + attn_out</div>
+                <p><span class="param-pill">+4,194,304 params &nbsp;(o_proj)</span></p>
+                <p>Attention subtotal per layer: <code>6,291,456 + 1,179,648 + 512 + 2,097,152 + 4,194,304 = <strong>13,763,072</strong> params</code>.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 6 — MLP: dense for layer 0, MoE for layers 1-26 -->
+          <div class="wt-step">
+            <header><span class="step-num">6</span><span class="step-title">RMSNorm 2 + MLP — <strong>dense for layer 0, MoE for layers 1–26</strong></span></header>
+            <div class="step-body">
+              <p><code>first_k_dense_replace: 1</code> means the first layer uses a standard dense SwiGLU MLP (<code>intermediate_size</code>=10,944). Every subsequent layer uses a <strong>DeepSeekMoE</strong> block.</p>
+
+              <div class="substep">
+                <h4>6a — Layer 0 (dense SwiGLU MLP)</h4>
+                <div class="code-block">x_norm2 = RMSNorm(x; γ')         <span class="annot"># +2,048 params (h)</span>
+
+gate_proj : [h, i] = [2048, 10944]
+up_proj   : [h, i] = [2048, 10944]
+down_proj : [i, h] = [10944, 2048]
+
+h1 = silu(x @ gate_proj) * (x @ up_proj)   <span class="op">→</span>   [T, i] = [6, 10944]
+mlp_out = h1 @ down_proj                   <span class="op">→</span>   [T, h] = [6, 2048]</div>
+                <p>
+                  <span class="param-pill">+2,048 &nbsp;(RMSNorm 2)</span>&nbsp;
+                  <span class="param-pill">+67,239,936 &nbsp;(3 × h × i)</span>
+                </p>
+                <p>Layer 0 total: <code>attn + RMSNorms + dense MLP = 13,763,072 + 4,096 + 67,239,936 = <strong>81,007,104</strong> params</code>.</p>
+              </div>
+
+              <div class="substep">
+                <h4>6b — Layers 1–26 (DeepSeekMoE block)</h4>
+
+                <div class="moe-callout">
+                  <div class="mc-head">
+                    <span class="mc-badge">this model</span>
+                    <span class="mc-title">DeepSeekMoE — fine-grained experts + shared experts</span>
+                  </div>
+                  <p>DeepSeek splits the MLP into <strong>66 small experts</strong>: 64 routed + 2 shared. Each expert is a mini SwiGLU with <code>moe_intermediate_size</code>=1,408 (about 8× smaller than the dense MLP's 10,944). Per token, the router picks the top <strong>6 of 64</strong> routed experts; the 2 shared experts are <strong>always</strong> active. All experts' outputs are summed into the residual stream.</p>
+                  <table>
+                    <thead>
+                      <tr><th>Component</th><th>Count</th><th>Active per token</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td>Routed experts</td><td>64</td><td>6 (top-k, greedy)</td></tr>
+                      <tr><td>Shared experts</td><td>2</td><td>2 (always)</td></tr>
+                      <tr><td>Total experts active</td><td>66</td><td>8</td></tr>
+                    </tbody>
+                  </table>
+                  <div class="mc-note"><strong>Infra implication:</strong> all 66 experts' weights must live in memory, but only 8 are touched per token. Per-token compute scales with active count; weight memory scales with total count.</div>
+                </div>
+
+                <div class="code-block"><span class="annot"># Router — picks top-6 of 64 routed experts</span>
+gate : [<span class="num">h</span>, <span class="num">n_routed_experts</span>] = [2048, 64]
+scores = softmax(x_norm2 @ gate, dim=-1)         <span class="op">→</span>   [T, 64]
+top6_experts, top6_weights = topk(scores, k=6)   <span class="op">→</span>   [T, 6]
+
+<span class="annot"># Each routed expert: SwiGLU with moe_intermediate_size</span>
+for i in 0..63:
+    expert_i : gate_proj + up_proj + down_proj
+              each [h, moe_i] or [moe_i, h], moe_i = 1408
+    <span class="annot"># 3 × 2048 × 1408 = 8,650,752 params per expert</span>
+
+<span class="annot"># Routed output: weighted sum of the chosen 6 experts</span>
+routed_out = Σ_{j in top6} top6_weights[j] · expert_j(x_norm2)   <span class="op">→</span>   [T, h]
+
+<span class="annot"># Shared experts: 2 experts, always on, outputs summed</span>
+shared_out = expert_shared_1(x_norm2) + expert_shared_2(x_norm2)   <span class="op">→</span>   [T, h]
+
+mlp_out = routed_out + shared_out
+x = x + mlp_out                                   <span class="annot"># residual</span></div>
+                <p>
+                  <span class="param-pill">+2,048 &nbsp;(RMSNorm 2)</span>&nbsp;
+                  <span class="param-pill">+131,072 &nbsp;(gate: h × 64)</span>&nbsp;
+                  <span class="param-pill">+553,648,128 &nbsp;(64 routed experts: 64 × 3 × h × moe_i)</span>&nbsp;
+                  <span class="param-pill">+17,301,504 &nbsp;(2 shared experts)</span>
+                </p>
+                <p>
+                  <span class="param-pill active">Active per token: +69,337,088 &nbsp;(gate + 6 routed + 2 shared)</span>
+                </p>
+                <p>MoE layer total: <code>attn + RMSNorms + MoE MLP = 13,763,072 + 4,096 + 571,080,704 = <strong>584,847,872</strong> params</code> (active: 83,104,256).</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 7 — Stack blocks -->
+          <div class="wt-step">
+            <header><span class="step-num">7</span><span class="step-title">Stack 27 blocks (1 dense + 26 MoE)</span></header>
+            <div class="step-body">
+              <div class="code-block">x = dense_block_0(x)                    <span class="annot"># layer 0, no routing</span>
+for layer in range(1, <span class="num">27</span>):
+    x = moe_block_{layer}(x)            <span class="annot"># layers 1..26, MoE</span>                                      <span class="annot"># shape [6, 2048]</span></div>
+              <p>
+                <span class="param-pill">+81,007,104 &nbsp;(dense layer 0)</span>&nbsp;
+                <span class="param-pill">+15,206,044,672 &nbsp;(26 × MoE layer)</span>
+              </p>
+              <p><span class="param-pill active">Active for 26 MoE layers: +2,160,710,656</span></p>
+            </div>
+          </div>
+
+          <!-- STEP 8 — Final RMSNorm + LM head -->
+          <div class="wt-step">
+            <header><span class="step-num">8</span><span class="step-title">Final RMSNorm &amp; LM head (not tied)</span></header>
+            <div class="step-body">
+              <div class="code-block">x = RMSNorm(x; γ_f)              <span class="annot"># +2,048 params (h)</span>
+lm_head : [<span class="num">h</span>, <span class="num">V</span>]  = [2048, 102400]
+logits = x @ lm_head             <span class="op">→</span>   [T, V]</div>
+              <p>
+                <span class="param-pill">+2,048 &nbsp;(final RMSNorm)</span>&nbsp;
+                <span class="param-pill">+209,715,200 &nbsp;(lm_head, not tied)</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- STEP 9 — Totals -->
+          <div class="wt-step">
+            <header><span class="step-num">9</span><span class="step-title">Add it all up — total weights vs active-per-token</span></header>
+            <div class="step-body">
+              <div class="code-block">embed_tokens  :       209,715,200   <span class="annot"># V × h</span>
+dense layer 0 :        81,007,104   <span class="annot"># attn + RMSNorms + dense SwiGLU</span>
+26 × MoE layer:    15,206,044,672   <span class="annot"># 26 × 584,847,872</span>
+final_rmsnorm :             2,048   <span class="annot"># h</span>
+lm_head       :       209,715,200   <span class="annot"># V × h, not tied</span>
+──────────────────────────────────
+total         :    15,706,484,224  ≈ <strong>15.7 B</strong></div>
+
+              <div class="totals-grid">
+                <div class="total-card total">
+                  <div class="label">Total weights (sit in VRAM)</div>
+                  <div class="val">15,706,484,224</div>
+                  <div class="desc">Every expert must fit in memory, whether or not it's active.</div>
+                </div>
+                <div class="total-card active">
+                  <div class="label">Active per token (compute)</div>
+                  <div class="val">2,661,150,208</div>
+                  <div class="desc">Only the 2 shared + 6 routed experts per layer touch each token.</div>
+                </div>
+              </div>
+              <p style="margin-top:10px;">That's the MoE infra bargain: pay for 15.7B weights of memory bandwidth and allocation, but only ~2.4B of compute per generated token.</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  </div><!-- /view-deepseek -->
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
