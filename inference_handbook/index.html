@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Inference Handbook — Ali Shafique</title>
+  <meta name="description" content="A technical guide to LLM inference — from deployment fundamentals to production optimization.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <!-- GitHub pill (same style as the tools) -->
+  <a class="gh-link" href="https://github.com/alishafique3/LLM-infra-from-scratch" target="_blank" rel="noreferrer" title="View source on GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.67 5.56.67 11.83c0 5.02 3.25 9.28 7.77 10.78.57.1.78-.25.78-.55v-2.05c-3.17.69-3.84-1.36-3.84-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.52-2.53-.29-5.2-1.27-5.2-5.63 0-1.24.44-2.26 1.17-3.06-.12-.29-.51-1.44.11-3 0 0 .96-.31 3.15 1.17a10.9 10.9 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.56.23 2.71.11 3 .73.8 1.17 1.82 1.17 3.06 0 4.37-2.68 5.33-5.22 5.61.41.35.78 1.05.78 2.12v3.15c0 .31.21.66.79.55 4.52-1.5 7.77-5.76 7.77-10.78C23.33 5.56 18.27.5 12 .5z"/></svg>
+    <span>LLM-infra-from-scratch</span>
+  </a>
+
+  <!-- ============================================================= -->
+  <!--   3-column layout                                               -->
+  <!-- ============================================================= -->
+  <div class="container-page">
+    <div class="handbook-layout">
+
+      <!-- ──────────────── left sidebar ──────────────── -->
+      <aside class="sidebar-left">
+        <h3 class="sidebar-title">LLM Inference Handbook</h3>
+
+        <nav class="module-nav">
+          <!-- Introduction (no chapters) -->
+          <a class="module-link" data-module="introduction" href="?module=introduction">Introduction</a>
+
+          <!-- Foundations -->
+          <a class="module-head" data-module="foundations" href="?module=foundations">
+            <span>Foundations</span><span class="caret">›</span>
+          </a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-module="foundations" data-chapter="what-is-inference" href="?module=foundations&chapter=what-is-inference">What is inference?</a>
+            <a class="chapter-link" data-module="foundations" data-chapter="understanding-tokens" href="?module=foundations&chapter=understanding-tokens">Understanding tokens</a>
+          </div>
+
+          <!-- Planning your deployment -->
+          <a class="module-head" data-module="planning-your-deployment" href="?module=planning-your-deployment">
+            <span>Planning your deployment</span><span class="caret">›</span>
+          </a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-module="planning-your-deployment" data-chapter="selecting-right-model" href="?module=planning-your-deployment&chapter=selecting-right-model">Selecting the right model</a>
+            <a class="chapter-link" data-module="planning-your-deployment" data-chapter="capacity-planning-basics" href="?module=planning-your-deployment&chapter=capacity-planning-basics">Capacity planning basics</a>
+          </div>
+
+          <!-- Model preparation -->
+          <a class="module-head" data-module="model-preparation" href="?module=model-preparation">
+            <span>Model preparation</span><span class="caret">›</span>
+          </a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-module="model-preparation" data-chapter="quantization-fundamentals" href="?module=model-preparation&chapter=quantization-fundamentals">Quantization fundamentals</a>
+            <a class="chapter-link" data-module="model-preparation" data-chapter="kv-cache-optimization" href="?module=model-preparation&chapter=kv-cache-optimization">KV cache optimization</a>
+          </div>
+
+          <!-- Model interaction -->
+          <a class="module-head" data-module="model-interaction" href="?module=model-interaction">
+            <span>Model interaction</span><span class="caret">›</span>
+          </a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-module="model-interaction" data-chapter="openai-compatible-api" href="?module=model-interaction&chapter=openai-compatible-api">OpenAI-compatible API</a>
+            <a class="chapter-link" data-module="model-interaction" data-chapter="streaming-vs-buffered" href="?module=model-interaction&chapter=streaming-vs-buffered">Streaming vs. buffered</a>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- ──────────────── center content ──────────────── -->
+      <main class="content">
+
+        <!-- ──────── introduction ──────── -->
+        <article data-page="introduction">
+          <h1>LLM Inference Handbook</h1>
+          <p><em>LLM Inference Handbook</em> is your technical glossary, guidebook, and reference — all in one. It covers everything you need to know about LLM inference, from core concepts to optimization techniques, GPU architecture, and deployment patterns.</p>
+
+          <h2>Key Features</h2>
+          <ul>
+            <li>Practical guidance for deploying, scaling, and operating LLMs in production</li>
+            <li>Interactive calculators, simulators, and visual tools</li>
+            <li>Optimization techniques tailored to your use case</li>
+            <li>Continuously updated with the latest best practices</li>
+          </ul>
+
+          <h2>Getting Started</h2>
+          <p>Explore the modules on the left to dive into specific topics. Each module contains chapters covering essential concepts and practical guidance.</p>
+
+          <h2>Example: Interactive Components</h2>
+          <p>Below is an interactive visualization you can embed anywhere:</p>
+          <div class="widget-token-decode" data-widget="token-decode">
+            <div class="wtd-head">
+              <h3>Token-by-Token Decode Loop</h3>
+              <p>Step through the decode loop. Each step picks one token from a distribution and appends it to the sequence.</p>
+            </div>
+
+            <div class="wtd-controls">
+              <button type="button" class="wtd-btn primary" data-action="step">
+                <!-- play icon -->
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Step
+              </button>
+              <button type="button" class="wtd-btn" data-action="autoplay">Autoplay</button>
+              <button type="button" class="wtd-btn" data-action="reset" aria-label="Reset">
+                <!-- reset icon -->
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+              </button>
+              <div class="wtd-step-count" data-slot="step-count">Step 1 / 8</div>
+            </div>
+
+            <div class="wtd-progress"><div class="wtd-progress-fill" data-slot="progress"></div></div>
+
+            <div>
+              <p class="wtd-section-label">Sequence</p>
+              <div class="wtd-sequence" data-slot="sequence"></div>
+            </div>
+
+            <div class="wtd-grid">
+              <div>
+                <p class="wtd-section-label">Next-Token Distribution</p>
+                <div data-slot="distribution"></div>
+              </div>
+              <div>
+                <p class="wtd-section-label">KV Cache</p>
+                <div class="wtd-kv-row" data-slot="kv"></div>
+                <p class="wtd-kv-note" data-slot="kv-note">Reuses 0 cached K/V pairs; computes fresh one this step.</p>
+              </div>
+            </div>
+          </div>
+
+          <h2>Example: Code Blocks</h2>
+          <p>Here's example Python code for token processing:</p>
+          <pre><span class="lang-label">python</span><code>def process_tokens(text, tokenizer):
+    """Convert text to tokens and back."""
+    tokens = tokenizer.encode(text)
+    decoded = tokenizer.decode(tokens)
+    return {
+        "tokens": tokens,
+        "token_count": len(tokens),
+        "decoded": decoded
+    }
+
+# Usage
+result = process_tokens("Hello, world!", tokenizer)
+print(f"Tokens: {result['token_count']}")</code></pre>
+
+          <p>JavaScript example:</p>
+          <pre><span class="lang-label">javascript</span><code>// Load model and generate tokens
+const model = await llm.load("model-name");
+const tokens = await model.tokenize("Hello, world!");
+console.log(`Generated ${tokens.length} tokens`);</code></pre>
+
+          <h2>Example: Images &amp; Diagrams</h2>
+          <blockquote>
+            <p><strong>Note:</strong> Add images like this: <code>![description](./images/diagram.png)</code><br>
+            Add GIFs: <code>![animation](./images/animation.gif)</code></p>
+          </blockquote>
+
+          <h2>Example: Tables</h2>
+          <p>Here's a comparison table:</p>
+          <table>
+            <thead>
+              <tr><th>Feature</th><th>CPU</th><th>GPU</th><th>TPU</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Throughput</td><td>Low</td><td>High</td><td>Very High</td></tr>
+              <tr><td>Cost</td><td>$</td><td>$$</td><td>$$$</td></tr>
+              <tr><td>Latency</td><td>High</td><td>Low</td><td>Very Low</td></tr>
+              <tr><td>Setup</td><td>Easy</td><td>Moderate</td><td>Complex</td></tr>
+            </tbody>
+          </table>
+
+          <h2>Example: Lists &amp; Formatting</h2>
+
+          <h3>Unordered List</h3>
+          <ul>
+            <li>First point about inference</li>
+            <li>Second point about optimization
+              <ul>
+                <li>Nested sub-point</li>
+                <li>Another detail</li>
+              </ul>
+            </li>
+            <li>Third main point</li>
+          </ul>
+
+          <h3>Ordered List</h3>
+          <ol>
+            <li>Load the model weights</li>
+            <li>Tokenize input text</li>
+            <li>Run forward pass</li>
+            <li>Decode output tokens</li>
+          </ol>
+
+          <h3>Blockquote</h3>
+          <blockquote>
+            <p>"The most important optimization is understanding where time actually goes."</p>
+            <p>— Production Inference Engineer</p>
+          </blockquote>
+
+          <h2>Example: Styled Content</h2>
+          <h3>Callout Box</h3>
+          <div class="callout">
+            <h3>💡 Pro Tip</h3>
+            <p>Always profile your actual workload before optimizing. Theoretical improvements rarely match real-world gains.</p>
+          </div>
+
+          <h2>Example: Links</h2>
+          <ul>
+            <li><a href="?module=foundations">Read the Foundations →</a></li>
+            <li><a href="?module=model-preparation">Model Preparation Guide →</a></li>
+            <li>External link: <a href="https://docs.nvidia.com/cuda/" target="_blank" rel="noopener">NVIDIA CUDA Documentation</a></li>
+          </ul>
+
+          <h2>Topics Covered</h2>
+          <ul>
+            <li><strong>Foundations</strong> — Core concepts every engineer should know</li>
+            <li><strong>Planning your deployment</strong> — How to plan and estimate your infrastructure needs</li>
+            <li><strong>Model preparation</strong> — Preparing models for optimal inference performance</li>
+            <li><strong>Model interaction</strong> — Building applications that use LLM inference</li>
+          </ul>
+
+          <h2>Contributing</h2>
+          <p>Each chapter in this handbook lives as a block inside <code>index.html</code>. To add a new chapter:</p>
+          <ol>
+            <li>Add a new <code>&lt;article data-page="..."&gt;</code> block below.</li>
+            <li>Register it in <code>assets/app.js</code>'s <code>PAGES</code> array.</li>
+            <li>Add a sidebar link in the left nav.</li>
+          </ol>
+          <p>No build step, no framework, no server — just HTML/CSS/JS.</p>
+        </article>
+
+        <!-- ──────── foundations / what-is-inference ──────── -->
+        <article data-page="foundations/what-is-inference">
+          <h1>What is inference?</h1>
+          <p>Inference is the process of running a trained machine learning model on new input data to generate predictions or output. In the context of LLMs, inference means running the model to generate tokens based on a user's prompt.</p>
+          <p>Unlike training, which optimizes model weights, inference is about efficiently executing the model's computation graph for real-time predictions.</p>
+          <p>The key difference from training: inference is read-only, stateless per-request, and optimized for latency and throughput rather than accuracy.</p>
+        </article>
+
+        <!-- ──────── foundations / understanding-tokens ──────── -->
+        <article data-page="foundations/understanding-tokens">
+          <h1>Understanding tokens</h1>
+          <p>Tokens are the atomic units that language models process. Each token represents a small chunk of text — roughly 4 characters of English text, though this varies by language and tokenizer.</p>
+          <p>Language models don't work with raw text; they work with token sequences. The tokenizer converts text into token IDs, and the model processes these sequences mathematically.</p>
+          <p>Understanding token flow is critical for capacity planning, latency analysis, and cost estimation. Token count directly impacts memory usage, computation time, and API costs.</p>
+
+          <h2>Interactive: Token Generation</h2>
+          <p>Below is an interactive visualization of how tokens are generated step-by-step. Click "Step" to advance through the generation process and see how the model builds the sequence one token at a time.</p>
+          <div class="widget-token-decode" data-widget="token-decode">
+            <div class="wtd-head">
+              <h3>Token-by-Token Decode Loop</h3>
+              <p>Step through the decode loop. Each step picks one token from a distribution and appends it to the sequence.</p>
+            </div>
+
+            <div class="wtd-controls">
+              <button type="button" class="wtd-btn primary" data-action="step">
+                <!-- play icon -->
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Step
+              </button>
+              <button type="button" class="wtd-btn" data-action="autoplay">Autoplay</button>
+              <button type="button" class="wtd-btn" data-action="reset" aria-label="Reset">
+                <!-- reset icon -->
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+              </button>
+              <div class="wtd-step-count" data-slot="step-count">Step 1 / 8</div>
+            </div>
+
+            <div class="wtd-progress"><div class="wtd-progress-fill" data-slot="progress"></div></div>
+
+            <div>
+              <p class="wtd-section-label">Sequence</p>
+              <div class="wtd-sequence" data-slot="sequence"></div>
+            </div>
+
+            <div class="wtd-grid">
+              <div>
+                <p class="wtd-section-label">Next-Token Distribution</p>
+                <div data-slot="distribution"></div>
+              </div>
+              <div>
+                <p class="wtd-section-label">KV Cache</p>
+                <div class="wtd-kv-row" data-slot="kv"></div>
+                <p class="wtd-kv-note" data-slot="kv-note">Reuses 0 cached K/V pairs; computes fresh one this step.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- ──────── planning-your-deployment / selecting-right-model ──────── -->
+        <article data-page="planning-your-deployment/selecting-right-model">
+          <h1>Selecting the right model</h1>
+          <p>Choosing a model involves trade-offs between performance, inference speed, memory requirements, and cost. No single model is best for all workloads.</p>
+          <p>Key factors to consider: model size (7B, 70B, 405B), architectural variants (base, instruction-tuned), quantization level, and inference latency requirements.</p>
+          <p>Smaller models are faster and cheaper but may lack reasoning capability. Larger models are more capable but require more resources. The right choice depends on your latency budget, cost constraints, and quality requirements.</p>
+        </article>
+
+        <!-- ──────── planning-your-deployment / capacity-planning-basics ──────── -->
+        <article data-page="planning-your-deployment/capacity-planning-basics">
+          <h1>Capacity planning basics</h1>
+          <p>Capacity planning means estimating how much hardware you need to handle your expected throughput and latency requirements.</p>
+          <p>Start by understanding your workload: expected requests per second, average input length, desired output length, and acceptable latency. Then calculate memory requirements and GPU throughput capacity.</p>
+          <p>A common mistake is planning for peak load. You need capacity for sustained load plus headroom for bursts. Plan for 70–80% sustained utilization to leave room for traffic spikes.</p>
+        </article>
+
+        <!-- ──────── model-preparation / quantization-fundamentals ──────── -->
+        <article data-page="model-preparation/quantization-fundamentals">
+          <h1>Quantization fundamentals</h1>
+          <p>Quantization reduces model precision (e.g., from FP32 to INT8) to decrease model size and memory bandwidth requirements.</p>
+          <p>Quantization can be post-training (after the model is trained) or during training. Post-training is simpler but may reduce quality. Quantized models are smaller, faster, and cheaper to serve.</p>
+          <p>The trade-off is accuracy loss. For many tasks, INT8 or even INT4 quantization works well. Some models degrade more than others with aggressive quantization.</p>
+        </article>
+
+        <!-- ──────── model-preparation / kv-cache-optimization ──────── -->
+        <article data-page="model-preparation/kv-cache-optimization">
+          <h1>KV cache optimization</h1>
+          <p>Since KV cache is the primary memory bottleneck, optimizing it is crucial. Techniques include multi-query attention (MQA) and grouped-query attention (GQA), which reduce cache size by sharing keys/values across attention heads.</p>
+          <p>Another approach is KV cache quantization, storing cache in lower precision (INT8) instead of FP16, reducing memory by 2–4×.</p>
+          <p>Prefix caching stores attention outputs for reused prefixes (e.g., system prompts), eliminating redundant computation when the same prefix is used across multiple requests.</p>
+        </article>
+
+        <!-- ──────── model-interaction / openai-compatible-api ──────── -->
+        <article data-page="model-interaction/openai-compatible-api">
+          <h1>OpenAI-compatible API</h1>
+          <p>Most modern LLM inference servers expose an OpenAI-compatible API, allowing drop-in replacement of OpenAI endpoints with local or self-hosted models.</p>
+          <p>The API supports chat completions, embeddings, completeness, and token counting. This standardization reduces migration friction and lets teams switch providers without rewriting application code.</p>
+          <p>OpenAI compatibility means client libraries (Python, JavaScript, etc.) work out of the box with just a URL and API key change.</p>
+        </article>
+
+        <!-- ──────── model-interaction / streaming-vs-buffered ──────── -->
+        <article data-page="model-interaction/streaming-vs-buffered">
+          <h1>Streaming vs. buffered</h1>
+          <p>Streaming responses send tokens as they're generated, improving perceived latency. Users see the first token in ~100 ms instead of waiting for the entire response.</p>
+          <p>Buffered responses wait until the full response is generated, then send all tokens at once. Simpler to implement but higher perceived latency.</p>
+          <p>Streaming has trade-offs: clients need to handle partial responses, network overhead from more packets, and server complexity. For user-facing applications, streaming is usually worth it.</p>
+        </article>
+
+        <!-- prev / next -->
+        <div id="chapter-nav" class="chapter-nav"></div>
+      </main>
+
+      <!-- ──────────────── right sidebar (on-page TOC) ──────────────── -->
+      <aside class="sidebar-right">
+        <h4 id="page-toc-title" class="toc-title">On this page</h4>
+        <nav id="page-toc" class="toc"></nav>
+      </aside>
+
+    </div>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
