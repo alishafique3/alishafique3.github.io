@@ -3,349 +3,358 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LLM Inference Handbook — Ali Shafique</title>
-  <meta name="description" content="A technical guide to LLM inference — from deployment fundamentals to production optimization.">
+  <title>LLM Inference Engineering Handbook — Ali Shafique</title>
+  <meta name="description" content="A practical engineering handbook for LLM inference: foundations, GPU hardware, deployment planning, model optimization, inference infrastructure, kernel optimization, production ops, and cost + energy.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
+  <!-- Apply saved theme BEFORE CSS loads to avoid a flash of wrong theme. -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = stored || (prefersDark ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (_) {}
+    })();
+  </script>
+
   <link rel="stylesheet" href="assets/styles.css">
+
+  <!-- MathJax 3 (loads async; app.js re-typesets on page activation) -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <!-- Prism.js — core + autoloader only. We define all colors in styles.css to
+       keep themes consistent and avoid the Prism-tomorrow stylesheet fighting us. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" data-manual></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+  <!-- marked.js — renders .md chapters loaded on demand by app.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 </head>
 <body>
 
-  <!-- GitHub pill (same style as the tools) -->
-  <a class="gh-link" href="https://github.com/alishafique3/LLM-infra-from-scratch" target="_blank" rel="noreferrer" title="View source on GitHub">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.67 5.56.67 11.83c0 5.02 3.25 9.28 7.77 10.78.57.1.78-.25.78-.55v-2.05c-3.17.69-3.84-1.36-3.84-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.52-2.53-.29-5.2-1.27-5.2-5.63 0-1.24.44-2.26 1.17-3.06-.12-.29-.51-1.44.11-3 0 0 .96-.31 3.15 1.17a10.9 10.9 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.56.23 2.71.11 3 .73.8 1.17 1.82 1.17 3.06 0 4.37-2.68 5.33-5.22 5.61.41.35.78 1.05.78 2.12v3.15c0 .31.21.66.79.55 4.52-1.5 7.77-5.76 7.77-10.78C23.33 5.56 18.27.5 12 .5z"/></svg>
-    <span>LLM-infra-from-scratch</span>
-  </a>
+  <!-- Top-right actions: theme toggle + GitHub pill -->
+  <div class="top-actions">
+    <button class="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun"  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
+    <a class="gh-link" href="https://github.com/alishafique3/LLM-infra-from-scratch" target="_blank" rel="noreferrer" title="View source on GitHub">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.67 5.56.67 11.83c0 5.02 3.25 9.28 7.77 10.78.57.1.78-.25.78-.55v-2.05c-3.17.69-3.84-1.36-3.84-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.52-2.53-.29-5.2-1.27-5.2-5.63 0-1.24.44-2.26 1.17-3.06-.12-.29-.51-1.44.11-3 0 0 .96-.31 3.15 1.17a10.9 10.9 0 0 1 5.74 0c2.19-1.48 3.15-1.17 3.15-1.17.62 1.56.23 2.71.11 3 .73.8 1.17 1.82 1.17 3.06 0 4.37-2.68 5.33-5.22 5.61.41.35.78 1.05.78 2.12v3.15c0 .31.21.66.79.55 4.52-1.5 7.77-5.76 7.77-10.78C23.33 5.56 18.27.5 12 .5z"/></svg>
+      <span>LLM-infra-from-scratch</span>
+    </a>
+  </div>
 
-  <!-- ============================================================= -->
-  <!--   3-column layout                                               -->
-  <!-- ============================================================= -->
   <div class="container-page">
     <div class="handbook-layout">
 
-      <!-- ──────────────── left sidebar ──────────────── -->
+      <!-- ──────────────── LEFT SIDEBAR ──────────────── -->
       <aside class="sidebar-left">
-        <h3 class="sidebar-title">LLM Inference Handbook</h3>
+        <h3 class="sidebar-title">LLM Inference Engineering Handbook</h3>
 
         <nav class="module-nav">
-          <!-- Introduction (no chapters) -->
-          <a class="module-link" data-module="introduction" href="?module=introduction">Introduction</a>
 
-          <!-- Foundations -->
-          <a class="module-head" data-module="foundations" href="?module=foundations">
-            <span>Foundations</span><span class="caret">›</span>
-          </a>
+          <!-- Module 1 -->
+          <a class="module-head" data-module-head="m1" href="?module=m1"><span>LLM &amp; Inference Fundamentals</span><span class="caret">›</span></a>
           <div class="chapter-list">
-            <a class="chapter-link" data-module="foundations" data-chapter="what-is-inference" href="?module=foundations&chapter=what-is-inference">What is inference?</a>
-            <a class="chapter-link" data-module="foundations" data-chapter="understanding-tokens" href="?module=foundations&chapter=understanding-tokens">Understanding tokens</a>
+            <a class="chapter-link" data-chapter-link data-module="m1" data-chapter="intro"                 href="?module=m1&chapter=intro">1. Introduction to LLM Inference Engineering</a>
+            <a class="chapter-link" data-chapter-link data-module="m1" data-chapter="how-llms-work"         href="?module=m1&chapter=how-llms-work">2. How Large Language Models Work</a>
+            <a class="chapter-link" data-chapter-link data-module="m1" data-chapter="tokens"                href="?module=m1&chapter=tokens">3. Understanding Tokens and Tokenization</a>
+            <a class="chapter-link" data-chapter-link data-module="m1" data-chapter="training-vs-inference" href="?module=m1&chapter=training-vs-inference">4. Training vs. Inference</a>
+            <a class="chapter-link" data-chapter-link data-module="m1" data-chapter="prefill-and-decode"    href="?module=m1&chapter=prefill-and-decode">5. Anatomy: Prefill &amp; Decode</a>
+            <a class="chapter-link" data-chapter-link data-module="m1" data-chapter="inference-parameters"  href="?module=m1&chapter=inference-parameters">6. LLM Inference Parameters</a>
+            <a class="chapter-link" data-chapter-link data-module="m1" data-chapter="performance-metrics"   href="?module=m1&chapter=performance-metrics">7. Key Performance Metrics</a>
           </div>
 
-          <!-- Planning your deployment -->
-          <a class="module-head" data-module="planning-your-deployment" href="?module=planning-your-deployment">
-            <span>Planning your deployment</span><span class="caret">›</span>
-          </a>
+          <!-- Module 2 -->
+          <a class="module-head" data-module-head="m2" href="?module=m2"><span>GPU Fundamentals</span><span class="caret">›</span></a>
           <div class="chapter-list">
-            <a class="chapter-link" data-module="planning-your-deployment" data-chapter="selecting-right-model" href="?module=planning-your-deployment&chapter=selecting-right-model">Selecting the right model</a>
-            <a class="chapter-link" data-module="planning-your-deployment" data-chapter="capacity-planning-basics" href="?module=planning-your-deployment&chapter=capacity-planning-basics">Capacity planning basics</a>
+            <a class="chapter-link" data-chapter-link data-module="m2" data-chapter="where-inference-runs"     href="?module=m2&chapter=where-inference-runs">1. Where Does LLM Inference Run?</a>
+            <a class="chapter-link" data-chapter-link data-module="m2" data-chapter="gpu-architecture"         href="?module=m2&chapter=gpu-architecture">2. GPU Architecture Fundamentals</a>
+            <a class="chapter-link" data-chapter-link data-module="m2" data-chapter="compute-memory-hierarchy" href="?module=m2&chapter=compute-memory-hierarchy">3. GPU Compute &amp; Memory Hierarchy</a>
+            <a class="chapter-link" data-chapter-link data-module="m2" data-chapter="gpu-memory-for-inference" href="?module=m2&chapter=gpu-memory-for-inference">4. GPU Memory for LLM Inference</a>
+            <a class="chapter-link" data-chapter-link data-module="m2" data-chapter="gpu-interconnects"        href="?module=m2&chapter=gpu-interconnects">5. GPU Interconnects &amp; Communication</a>
+            <a class="chapter-link" data-chapter-link data-module="m2" data-chapter="multi-gpu-fundamentals"   href="?module=m2&chapter=multi-gpu-fundamentals">6. Multi-GPU Inference Fundamentals</a>
+            <a class="chapter-link" data-chapter-link data-module="m2" data-chapter="performance-bottlenecks"  href="?module=m2&chapter=performance-bottlenecks">7. GPU Performance Bottlenecks</a>
           </div>
 
-          <!-- Model preparation -->
-          <a class="module-head" data-module="model-preparation" href="?module=model-preparation">
-            <span>Model preparation</span><span class="caret">›</span>
-          </a>
+          <!-- Module 3 -->
+          <a class="module-head" data-module-head="m3" href="?module=m3"><span>Planning Your Deployment</span><span class="caret">›</span></a>
           <div class="chapter-list">
-            <a class="chapter-link" data-module="model-preparation" data-chapter="quantization-fundamentals" href="?module=model-preparation&chapter=quantization-fundamentals">Quantization fundamentals</a>
-            <a class="chapter-link" data-module="model-preparation" data-chapter="kv-cache-optimization" href="?module=model-preparation&chapter=kv-cache-optimization">KV cache optimization</a>
+            <a class="chapter-link" data-chapter-link data-module="m3" data-chapter="deployment-architectures" href="?module=m3&chapter=deployment-architectures">1. LLM Deployment Architectures</a>
+            <a class="chapter-link" data-chapter-link data-module="m3" data-chapter="choosing-the-llm"         href="?module=m3&chapter=choosing-the-llm">2. Choosing the Right LLM</a>
+            <a class="chapter-link" data-chapter-link data-module="m3" data-chapter="gpu-selection-memory"     href="?module=m3&chapter=gpu-selection-memory">3. GPU Selection &amp; Memory Sizing</a>
+            <a class="chapter-link" data-chapter-link data-module="m3" data-chapter="capacity-planning"        href="?module=m3&chapter=capacity-planning">4. Capacity Planning Fundamentals</a>
+            <a class="chapter-link" data-chapter-link data-module="m3" data-chapter="inference-framework"      href="?module=m3&chapter=inference-framework">5. Choosing the Inference Framework</a>
+            <a class="chapter-link" data-chapter-link data-module="m3" data-chapter="serving-first-llm"        href="?module=m3&chapter=serving-first-llm">6. Serving Your First LLM</a>
+            <a class="chapter-link" data-chapter-link data-module="m3" data-chapter="cloud-hybrid-onprem"      href="?module=m3&chapter=cloud-hybrid-onprem">7. Cloud, Hybrid &amp; On-Prem</a>
           </div>
 
-          <!-- Model interaction -->
-          <a class="module-head" data-module="model-interaction" href="?module=model-interaction">
-            <span>Model interaction</span><span class="caret">›</span>
-          </a>
+          <!-- Module 4 -->
+          <a class="module-head" data-module-head="m4" href="?module=m4"><span>Model Optimization</span><span class="caret">›</span></a>
           <div class="chapter-list">
-            <a class="chapter-link" data-module="model-interaction" data-chapter="openai-compatible-api" href="?module=model-interaction&chapter=openai-compatible-api">OpenAI-compatible API</a>
-            <a class="chapter-link" data-module="model-interaction" data-chapter="streaming-vs-buffered" href="?module=model-interaction&chapter=streaming-vs-buffered">Streaming vs. buffered</a>
+            <a class="chapter-link" data-chapter-link data-module="m4" data-chapter="intro-model-optimization" href="?module=m4&chapter=intro-model-optimization">1. Introduction to Model Optimization</a>
+            <a class="chapter-link" data-chapter-link data-module="m4" data-chapter="quantization-fundamentals" href="?module=m4&chapter=quantization-fundamentals">2. LLM Quantization Fundamentals</a>
+            <a class="chapter-link" data-chapter-link data-module="m4" data-chapter="quantization-methods"    href="?module=m4&chapter=quantization-methods">3. Quantization Methods &amp; Frameworks</a>
+            <a class="chapter-link" data-chapter-link data-module="m4" data-chapter="distillation"            href="?module=m4&chapter=distillation">4. Model Distillation</a>
+            <a class="chapter-link" data-chapter-link data-module="m4" data-chapter="fine-tuning"             href="?module=m4&chapter=fine-tuning">5. Fine-Tuning for Inference</a>
+            <a class="chapter-link" data-chapter-link data-module="m4" data-chapter="evaluating-optimized"    href="?module=m4&chapter=evaluating-optimized">6. Evaluating Optimized Models</a>
           </div>
+
+          <!-- Module 5 -->
+          <a class="module-head" data-module-head="m5" href="?module=m5"><span>Model Interaction Choices</span><span class="caret">›</span></a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-chapter-link data-module="m5" data-chapter="inference-apis"           href="?module=m5&chapter=inference-apis">1. Understanding LLM Inference APIs</a>
+            <a class="chapter-link" data-chapter-link data-module="m5" data-chapter="openai-anthropic-apis"    href="?module=m5&chapter=openai-anthropic-apis">2. OpenAI- &amp; Anthropic-Compatible APIs</a>
+            <a class="chapter-link" data-chapter-link data-module="m5" data-chapter="streaming-vs-buffered"    href="?module=m5&chapter=streaming-vs-buffered">3. Streaming vs. Buffered Inference</a>
+            <a class="chapter-link" data-chapter-link data-module="m5" data-chapter="prompt-engineering"       href="?module=m5&chapter=prompt-engineering">4. Prompt Engineering &amp; Context</a>
+            <a class="chapter-link" data-chapter-link data-module="m5" data-chapter="structured-outputs"       href="?module=m5&chapter=structured-outputs">5. Structured Outputs</a>
+            <a class="chapter-link" data-chapter-link data-module="m5" data-chapter="function-calling-mcp"     href="?module=m5&chapter=function-calling-mcp">6. Function Calling, Tools &amp; MCP</a>
+            <a class="chapter-link" data-chapter-link data-module="m5" data-chapter="agent-harnesses"          href="?module=m5&chapter=agent-harnesses">7. Agent Harnesses</a>
+          </div>
+
+          <!-- Module 6 -->
+          <a class="module-head" data-module-head="m6" href="?module=m6"><span>Inference Infra Optimization</span><span class="caret">›</span></a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-chapter-link data-module="m6" data-chapter="engine-anatomy"            href="?module=m6&chapter=engine-anatomy">1. Anatomy of an Inference Engine</a>
+            <a class="chapter-link" data-chapter-link data-module="m6" data-chapter="batching-scheduling"      href="?module=m6&chapter=batching-scheduling">2. Batching &amp; Scheduling</a>
+            <a class="chapter-link" data-chapter-link data-module="m6" data-chapter="kv-cache-paged"           href="?module=m6&chapter=kv-cache-paged">3. KV Cache &amp; PagedAttention</a>
+            <a class="chapter-link" data-chapter-link data-module="m6" data-chapter="kv-cache-optimization"    href="?module=m6&chapter=kv-cache-optimization">4. KV Cache Optimization</a>
+            <a class="chapter-link" data-chapter-link data-module="m6" data-chapter="decoding-optimization"    href="?module=m6&chapter=decoding-optimization">5. Decoding Optimization</a>
+            <a class="chapter-link" data-chapter-link data-module="m6" data-chapter="distributed-parallelism"  href="?module=m6&chapter=distributed-parallelism">6. Distributed Parallelism</a>
+            <a class="chapter-link" data-chapter-link data-module="m6" data-chapter="advanced-serving"         href="?module=m6&chapter=advanced-serving">7. Advanced Serving</a>
+          </div>
+
+          <!-- Module 7 -->
+          <a class="module-head" data-module-head="m7" href="?module=m7"><span>GPU Kernel Optimization</span><span class="caret">›</span></a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-chapter-link data-module="m7" data-chapter="intro-kernel"       href="?module=m7&chapter=intro-kernel">1. Introduction to Kernel Optimization</a>
+            <a class="chapter-link" data-chapter-link data-module="m7" data-chapter="compute-kernels"    href="?module=m7&chapter=compute-kernels">2. LLM Compute Kernels</a>
+            <a class="chapter-link" data-chapter-link data-module="m7" data-chapter="cuda-triton"        href="?module=m7&chapter=cuda-triton">3. CUDA &amp; Triton</a>
+            <a class="chapter-link" data-chapter-link data-module="m7" data-chapter="flashattention"     href="?module=m7&chapter=flashattention">4. FlashAttention</a>
+            <a class="chapter-link" data-chapter-link data-module="m7" data-chapter="kernel-fusion"      href="?module=m7&chapter=kernel-fusion">5. Kernel Fusion</a>
+            <a class="chapter-link" data-chapter-link data-module="m7" data-chapter="profiling"          href="?module=m7&chapter=profiling">6. GPU Profiling</a>
+          </div>
+
+          <!-- Module 8 -->
+          <a class="module-head" data-module-head="m8" href="?module=m8"><span>Production Ops &amp; Load Testing</span><span class="caret">›</span></a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-chapter-link data-module="m8" data-chapter="production-infra"          href="?module=m8&chapter=production-infra">1. Production Infrastructure</a>
+            <a class="chapter-link" data-chapter-link data-module="m8" data-chapter="containerization-k8s"     href="?module=m8&chapter=containerization-k8s">2. Containerization &amp; Kubernetes</a>
+            <a class="chapter-link" data-chapter-link data-module="m8" data-chapter="load-balancing-autoscaling" href="?module=m8&chapter=load-balancing-autoscaling">3. Load Balancing &amp; Autoscaling</a>
+            <a class="chapter-link" data-chapter-link data-module="m8" data-chapter="observability"             href="?module=m8&chapter=observability">4. Observability &amp; Monitoring</a>
+            <a class="chapter-link" data-chapter-link data-module="m8" data-chapter="load-testing-slo"          href="?module=m8&chapter=load-testing-slo">5. Load Testing &amp; SLO</a>
+            <a class="chapter-link" data-chapter-link data-module="m8" data-chapter="multi-model-multi-cloud"   href="?module=m8&chapter=multi-model-multi-cloud">6. Multi-Model &amp; Multi-Cloud</a>
+            <a class="chapter-link" data-chapter-link data-module="m8" data-chapter="inference-ops"             href="?module=m8&chapter=inference-ops">7. InferenceOps</a>
+          </div>
+
+          <!-- Module 9 -->
+          <a class="module-head" data-module-head="m9" href="?module=m9"><span>Cost &amp; Energy-Efficient Inference</span><span class="caret">›</span></a>
+          <div class="chapter-list">
+            <a class="chapter-link" data-chapter-link data-module="m9" data-chapter="inference-economics"       href="?module=m9&chapter=inference-economics">1. LLM Inference Economics</a>
+            <a class="chapter-link" data-chapter-link data-module="m9" data-chapter="calculating-cost"          href="?module=m9&chapter=calculating-cost">2. Calculating Inference Cost</a>
+            <a class="chapter-link" data-chapter-link data-module="m9" data-chapter="cloud-vs-self-hosted"      href="?module=m9&chapter=cloud-vs-self-hosted">3. Cloud vs. Self-Hosted Economics</a>
+            <a class="chapter-link" data-chapter-link data-module="m9" data-chapter="energy-tokens-per-joule"   href="?module=m9&chapter=energy-tokens-per-joule">4. Energy &amp; Tokens-per-Joule</a>
+            <a class="chapter-link" data-chapter-link data-module="m9" data-chapter="power-energy-optimization" href="?module=m9&chapter=power-energy-optimization">5. GPU Power &amp; Energy Optimization</a>
+            <a class="chapter-link" data-chapter-link data-module="m9" data-chapter="cost-energy-scheduling"    href="?module=m9&chapter=cost-energy-scheduling">6. Cost- &amp; Energy-Aware Scheduling</a>
+            <a class="chapter-link" data-chapter-link data-module="m9" data-chapter="designing-cost-energy-stack" href="?module=m9&chapter=designing-cost-energy-stack">7. Designing the Full Stack</a>
+          </div>
+
         </nav>
       </aside>
 
-      <!-- ──────────────── center content ──────────────── -->
+      <!-- ──────────────── MAIN CONTENT ──────────────── -->
       <main class="content">
 
-        <!-- ──────── introduction ──────── -->
-        <article data-page="introduction">
-          <h1>LLM Inference Handbook</h1>
-          <p><em>LLM Inference Handbook</em> is your technical glossary, guidebook, and reference — all in one. It covers everything you need to know about LLM inference, from core concepts to optimization techniques, GPU architecture, and deployment patterns.</p>
+        <!-- ================================================================= -->
+        <!--   MODULE 1 — LLM AND INFERENCE FUNDAMENTALS                       -->
+        <!-- ================================================================= -->
 
-          <h2>Key Features</h2>
-          <ul>
-            <li>Practical guidance for deploying, scaling, and operating LLMs in production</li>
-            <li>Interactive calculators, simulators, and visual tools</li>
-            <li>Optimization techniques tailored to your use case</li>
-            <li>Continuously updated with the latest best practices</li>
-          </ul>
+        <!-- ─── M1.1 Introduction ─── SPINE -->
+        <article data-page="m1/intro"></article>
 
-          <h2>Getting Started</h2>
-          <p>Explore the modules on the left to dive into specific topics. Each module contains chapters covering essential concepts and practical guidance.</p>
+        <!-- ─── M1.2 How LLMs Work ─── SPINE -->
+        <article data-page="m1/how-llms-work"></article>
 
-          <h2>Example: Interactive Components</h2>
-          <p>Below is an interactive visualization you can embed anywhere:</p>
-          <div class="widget-token-decode" data-widget="token-decode">
-            <div class="wtd-head">
-              <h3>Token-by-Token Decode Loop</h3>
-              <p>Step through the decode loop. Each step picks one token from a distribution and appends it to the sequence.</p>
-            </div>
+        <!-- ─── M1.3 Understanding Tokens and Tokenization ─── -->
+        <article data-page="m1/tokens"></article>
 
-            <div class="wtd-controls">
-              <button type="button" class="wtd-btn primary" data-action="step">
-                <!-- play icon -->
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Step
-              </button>
-              <button type="button" class="wtd-btn" data-action="autoplay">Autoplay</button>
-              <button type="button" class="wtd-btn" data-action="reset" aria-label="Reset">
-                <!-- reset icon -->
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-              </button>
-              <div class="wtd-step-count" data-slot="step-count">Step 1 / 8</div>
-            </div>
+        <!-- ─── M1.4 Training vs Inference ─── -->
+        <article data-page="m1/training-vs-inference"></article>
 
-            <div class="wtd-progress"><div class="wtd-progress-fill" data-slot="progress"></div></div>
+        <!-- ─── M1.5 Prefill and Decode ─── SPINE -->
+        <article data-page="m1/prefill-and-decode"></article>
 
-            <div>
-              <p class="wtd-section-label">Sequence</p>
-              <div class="wtd-sequence" data-slot="sequence"></div>
-            </div>
+        <!-- ─── M1.6 Inference Parameters ─── -->
+        <article data-page="m1/inference-parameters"></article>
 
-            <div class="wtd-grid">
-              <div>
-                <p class="wtd-section-label">Next-Token Distribution</p>
-                <div data-slot="distribution"></div>
-              </div>
-              <div>
-                <p class="wtd-section-label">KV Cache</p>
-                <div class="wtd-kv-row" data-slot="kv"></div>
-                <p class="wtd-kv-note" data-slot="kv-note">Reuses 0 cached K/V pairs; computes fresh one this step.</p>
-              </div>
-            </div>
-          </div>
+        <!-- ─── M1.7 Performance Metrics ─── SPINE -->
+        <article data-page="m1/performance-metrics"></article>
 
-          <h2>Example: Code Blocks</h2>
-          <p>Here's example Python code for token processing:</p>
-          <pre><span class="lang-label">python</span><code>def process_tokens(text, tokenizer):
-    """Convert text to tokens and back."""
-    tokens = tokenizer.encode(text)
-    decoded = tokenizer.decode(tokens)
-    return {
-        "tokens": tokens,
-        "token_count": len(tokens),
-        "decoded": decoded
-    }
+        <!-- ================================================================= -->
+        <!--   MODULE 2 — GPU FUNDAMENTALS (all placeholders Phase 2)          -->
+        <!-- ================================================================= -->
 
-# Usage
-result = process_tokens("Hello, world!", tokenizer)
-print(f"Tokens: {result['token_count']}")</code></pre>
+        <article data-page="m2/where-inference-runs"></article>
 
-          <p>JavaScript example:</p>
-          <pre><span class="lang-label">javascript</span><code>// Load model and generate tokens
-const model = await llm.load("model-name");
-const tokens = await model.tokenize("Hello, world!");
-console.log(`Generated ${tokens.length} tokens`);</code></pre>
+        <article data-page="m2/gpu-architecture"></article>
 
-          <h2>Example: Images &amp; Diagrams</h2>
-          <blockquote>
-            <p><strong>Note:</strong> Add images like this: <code>![description](./images/diagram.png)</code><br>
-            Add GIFs: <code>![animation](./images/animation.gif)</code></p>
-          </blockquote>
+        <article data-page="m2/compute-memory-hierarchy"></article>
 
-          <h2>Example: Tables</h2>
-          <p>Here's a comparison table:</p>
-          <table>
-            <thead>
-              <tr><th>Feature</th><th>CPU</th><th>GPU</th><th>TPU</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Throughput</td><td>Low</td><td>High</td><td>Very High</td></tr>
-              <tr><td>Cost</td><td>$</td><td>$$</td><td>$$$</td></tr>
-              <tr><td>Latency</td><td>High</td><td>Low</td><td>Very Low</td></tr>
-              <tr><td>Setup</td><td>Easy</td><td>Moderate</td><td>Complex</td></tr>
-            </tbody>
-          </table>
+        <article data-page="m2/gpu-memory-for-inference"></article>
 
-          <h2>Example: Lists &amp; Formatting</h2>
+        <article data-page="m2/gpu-interconnects"></article>
 
-          <h3>Unordered List</h3>
-          <ul>
-            <li>First point about inference</li>
-            <li>Second point about optimization
-              <ul>
-                <li>Nested sub-point</li>
-                <li>Another detail</li>
-              </ul>
-            </li>
-            <li>Third main point</li>
-          </ul>
+        <article data-page="m2/multi-gpu-fundamentals"></article>
 
-          <h3>Ordered List</h3>
-          <ol>
-            <li>Load the model weights</li>
-            <li>Tokenize input text</li>
-            <li>Run forward pass</li>
-            <li>Decode output tokens</li>
-          </ol>
+        <article data-page="m2/performance-bottlenecks"></article>
 
-          <h3>Blockquote</h3>
-          <blockquote>
-            <p>"The most important optimization is understanding where time actually goes."</p>
-            <p>— Production Inference Engineer</p>
-          </blockquote>
+        <!-- ================================================================= -->
+        <!--   MODULE 3 — PLANNING YOUR DEPLOYMENT                             -->
+        <!-- ================================================================= -->
 
-          <h2>Example: Styled Content</h2>
-          <h3>Callout Box</h3>
-          <div class="callout">
-            <h3>💡 Pro Tip</h3>
-            <p>Always profile your actual workload before optimizing. Theoretical improvements rarely match real-world gains.</p>
-          </div>
+        <article data-page="m3/deployment-architectures"></article>
 
-          <h2>Example: Links</h2>
-          <ul>
-            <li><a href="?module=foundations">Read the Foundations →</a></li>
-            <li><a href="?module=model-preparation">Model Preparation Guide →</a></li>
-            <li>External link: <a href="https://docs.nvidia.com/cuda/" target="_blank" rel="noopener">NVIDIA CUDA Documentation</a></li>
-          </ul>
+        <article data-page="m3/choosing-the-llm"></article>
 
-          <h2>Topics Covered</h2>
-          <ul>
-            <li><strong>Foundations</strong> — Core concepts every engineer should know</li>
-            <li><strong>Planning your deployment</strong> — How to plan and estimate your infrastructure needs</li>
-            <li><strong>Model preparation</strong> — Preparing models for optimal inference performance</li>
-            <li><strong>Model interaction</strong> — Building applications that use LLM inference</li>
-          </ul>
+        <!-- ─── M3.3 GPU Selection and Memory Sizing ─── SPINE -->
+        <article data-page="m3/gpu-selection-memory"></article>
 
-          <h2>Contributing</h2>
-          <p>Each chapter in this handbook lives as a block inside <code>index.html</code>. To add a new chapter:</p>
-          <ol>
-            <li>Add a new <code>&lt;article data-page="..."&gt;</code> block below.</li>
-            <li>Register it in <code>assets/app.js</code>'s <code>PAGES</code> array.</li>
-            <li>Add a sidebar link in the left nav.</li>
-          </ol>
-          <p>No build step, no framework, no server — just HTML/CSS/JS.</p>
-        </article>
+        <article data-page="m3/capacity-planning"></article>
 
-        <!-- ──────── foundations / what-is-inference ──────── -->
-        <article data-page="foundations/what-is-inference">
-          <h1>What is inference?</h1>
-          <p>Inference is the process of running a trained machine learning model on new input data to generate predictions or output. In the context of LLMs, inference means running the model to generate tokens based on a user's prompt.</p>
-          <p>Unlike training, which optimizes model weights, inference is about efficiently executing the model's computation graph for real-time predictions.</p>
-          <p>The key difference from training: inference is read-only, stateless per-request, and optimized for latency and throughput rather than accuracy.</p>
-        </article>
+        <article data-page="m3/inference-framework"></article>
 
-        <!-- ──────── foundations / understanding-tokens ──────── -->
-        <article data-page="foundations/understanding-tokens">
-          <h1>Understanding tokens</h1>
-          <p>Tokens are the atomic units that language models process. Each token represents a small chunk of text — roughly 4 characters of English text, though this varies by language and tokenizer.</p>
-          <p>Language models don't work with raw text; they work with token sequences. The tokenizer converts text into token IDs, and the model processes these sequences mathematically.</p>
-          <p>Understanding token flow is critical for capacity planning, latency analysis, and cost estimation. Token count directly impacts memory usage, computation time, and API costs.</p>
+        <article data-page="m3/serving-first-llm"></article>
 
-          <h2>Interactive: Token Generation</h2>
-          <p>Below is an interactive visualization of how tokens are generated step-by-step. Click "Step" to advance through the generation process and see how the model builds the sequence one token at a time.</p>
-          <div class="widget-token-decode" data-widget="token-decode">
-            <div class="wtd-head">
-              <h3>Token-by-Token Decode Loop</h3>
-              <p>Step through the decode loop. Each step picks one token from a distribution and appends it to the sequence.</p>
-            </div>
+        <article data-page="m3/cloud-hybrid-onprem"></article>
 
-            <div class="wtd-controls">
-              <button type="button" class="wtd-btn primary" data-action="step">
-                <!-- play icon -->
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Step
-              </button>
-              <button type="button" class="wtd-btn" data-action="autoplay">Autoplay</button>
-              <button type="button" class="wtd-btn" data-action="reset" aria-label="Reset">
-                <!-- reset icon -->
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-              </button>
-              <div class="wtd-step-count" data-slot="step-count">Step 1 / 8</div>
-            </div>
+        <!-- ================================================================= -->
+        <!--   MODULE 4 — MODEL OPTIMIZATION                                   -->
+        <!-- ================================================================= -->
 
-            <div class="wtd-progress"><div class="wtd-progress-fill" data-slot="progress"></div></div>
+        <article data-page="m4/intro-model-optimization"></article>
 
-            <div>
-              <p class="wtd-section-label">Sequence</p>
-              <div class="wtd-sequence" data-slot="sequence"></div>
-            </div>
+        <article data-page="m4/quantization-fundamentals"></article>
 
-            <div class="wtd-grid">
-              <div>
-                <p class="wtd-section-label">Next-Token Distribution</p>
-                <div data-slot="distribution"></div>
-              </div>
-              <div>
-                <p class="wtd-section-label">KV Cache</p>
-                <div class="wtd-kv-row" data-slot="kv"></div>
-                <p class="wtd-kv-note" data-slot="kv-note">Reuses 0 cached K/V pairs; computes fresh one this step.</p>
-              </div>
-            </div>
-          </div>
-        </article>
+        <article data-page="m4/quantization-methods"></article>
 
-        <!-- ──────── planning-your-deployment / selecting-right-model ──────── -->
-        <article data-page="planning-your-deployment/selecting-right-model">
-          <h1>Selecting the right model</h1>
-          <p>Choosing a model involves trade-offs between performance, inference speed, memory requirements, and cost. No single model is best for all workloads.</p>
-          <p>Key factors to consider: model size (7B, 70B, 405B), architectural variants (base, instruction-tuned), quantization level, and inference latency requirements.</p>
-          <p>Smaller models are faster and cheaper but may lack reasoning capability. Larger models are more capable but require more resources. The right choice depends on your latency budget, cost constraints, and quality requirements.</p>
-        </article>
+        <article data-page="m4/distillation"></article>
 
-        <!-- ──────── planning-your-deployment / capacity-planning-basics ──────── -->
-        <article data-page="planning-your-deployment/capacity-planning-basics">
-          <h1>Capacity planning basics</h1>
-          <p>Capacity planning means estimating how much hardware you need to handle your expected throughput and latency requirements.</p>
-          <p>Start by understanding your workload: expected requests per second, average input length, desired output length, and acceptable latency. Then calculate memory requirements and GPU throughput capacity.</p>
-          <p>A common mistake is planning for peak load. You need capacity for sustained load plus headroom for bursts. Plan for 70–80% sustained utilization to leave room for traffic spikes.</p>
-        </article>
+        <article data-page="m4/fine-tuning"></article>
 
-        <!-- ──────── model-preparation / quantization-fundamentals ──────── -->
-        <article data-page="model-preparation/quantization-fundamentals">
-          <h1>Quantization fundamentals</h1>
-          <p>Quantization reduces model precision (e.g., from FP32 to INT8) to decrease model size and memory bandwidth requirements.</p>
-          <p>Quantization can be post-training (after the model is trained) or during training. Post-training is simpler but may reduce quality. Quantized models are smaller, faster, and cheaper to serve.</p>
-          <p>The trade-off is accuracy loss. For many tasks, INT8 or even INT4 quantization works well. Some models degrade more than others with aggressive quantization.</p>
-        </article>
+        <article data-page="m4/evaluating-optimized"></article>
 
-        <!-- ──────── model-preparation / kv-cache-optimization ──────── -->
-        <article data-page="model-preparation/kv-cache-optimization">
-          <h1>KV cache optimization</h1>
-          <p>Since KV cache is the primary memory bottleneck, optimizing it is crucial. Techniques include multi-query attention (MQA) and grouped-query attention (GQA), which reduce cache size by sharing keys/values across attention heads.</p>
-          <p>Another approach is KV cache quantization, storing cache in lower precision (INT8) instead of FP16, reducing memory by 2–4×.</p>
-          <p>Prefix caching stores attention outputs for reused prefixes (e.g., system prompts), eliminating redundant computation when the same prefix is used across multiple requests.</p>
-        </article>
+        <!-- ================================================================= -->
+        <!--   MODULE 5 — MODEL INTERACTION CHOICES                            -->
+        <!-- ================================================================= -->
 
-        <!-- ──────── model-interaction / openai-compatible-api ──────── -->
-        <article data-page="model-interaction/openai-compatible-api">
-          <h1>OpenAI-compatible API</h1>
-          <p>Most modern LLM inference servers expose an OpenAI-compatible API, allowing drop-in replacement of OpenAI endpoints with local or self-hosted models.</p>
-          <p>The API supports chat completions, embeddings, completeness, and token counting. This standardization reduces migration friction and lets teams switch providers without rewriting application code.</p>
-          <p>OpenAI compatibility means client libraries (Python, JavaScript, etc.) work out of the box with just a URL and API key change.</p>
-        </article>
+        <article data-page="m5/inference-apis"></article>
 
-        <!-- ──────── model-interaction / streaming-vs-buffered ──────── -->
-        <article data-page="model-interaction/streaming-vs-buffered">
-          <h1>Streaming vs. buffered</h1>
-          <p>Streaming responses send tokens as they're generated, improving perceived latency. Users see the first token in ~100 ms instead of waiting for the entire response.</p>
-          <p>Buffered responses wait until the full response is generated, then send all tokens at once. Simpler to implement but higher perceived latency.</p>
-          <p>Streaming has trade-offs: clients need to handle partial responses, network overhead from more packets, and server complexity. For user-facing applications, streaming is usually worth it.</p>
-        </article>
+        <article data-page="m5/openai-anthropic-apis"></article>
 
-        <!-- prev / next -->
+        <article data-page="m5/streaming-vs-buffered"></article>
+
+        <article data-page="m5/prompt-engineering"></article>
+
+        <article data-page="m5/structured-outputs"></article>
+
+        <article data-page="m5/function-calling-mcp"></article>
+
+        <article data-page="m5/agent-harnesses"></article>
+
+        <!-- ================================================================= -->
+        <!--   MODULE 6 — INFERENCE INFRASTRUCTURE OPTIMIZATION                -->
+        <!-- ================================================================= -->
+
+        <article data-page="m6/engine-anatomy"></article>
+
+        <!-- ─── M6.2 Batching and Scheduling ─── SPINE -->
+        <article data-page="m6/batching-scheduling"></article>
+
+        <!-- ─── M6.3 KV Cache + PagedAttention ─── SPINE -->
+        <article data-page="m6/kv-cache-paged"></article>
+
+        <article data-page="m6/kv-cache-optimization"></article>
+
+        <!-- ─── M6.5 Decoding Optimization ─── SPINE -->
+        <article data-page="m6/decoding-optimization"></article>
+
+        <article data-page="m6/distributed-parallelism"></article>
+
+        <article data-page="m6/advanced-serving"></article>
+
+        <!-- ================================================================= -->
+        <!--   MODULE 7 — GPU KERNEL OPTIMIZATION                              -->
+        <!-- ================================================================= -->
+
+        <article data-page="m7/intro-kernel"></article>
+
+        <article data-page="m7/compute-kernels"></article>
+
+        <article data-page="m7/cuda-triton"></article>
+
+        <article data-page="m7/flashattention"></article>
+
+        <article data-page="m7/kernel-fusion"></article>
+
+        <article data-page="m7/profiling"></article>
+
+        <!-- ================================================================= -->
+        <!--   MODULE 8 — PRODUCTION OPERATIONS                                -->
+        <!-- ================================================================= -->
+
+        <article data-page="m8/production-infra"></article>
+
+        <article data-page="m8/containerization-k8s"></article>
+
+        <article data-page="m8/load-balancing-autoscaling"></article>
+
+        <article data-page="m8/observability"></article>
+
+        <article data-page="m8/load-testing-slo"></article>
+
+        <article data-page="m8/multi-model-multi-cloud"></article>
+
+        <article data-page="m8/inference-ops"></article>
+
+        <!-- ================================================================= -->
+        <!--   MODULE 9 — COST & ENERGY-EFFICIENT INFERENCE                    -->
+        <!-- ================================================================= -->
+
+        <article data-page="m9/inference-economics"></article>
+
+        <!-- ─── M9.2 Calculating Inference Cost ─── SPINE -->
+        <article data-page="m9/calculating-cost"></article>
+
+        <article data-page="m9/cloud-vs-self-hosted"></article>
+
+        <!-- ─── M9.4 Energy and Tokens-per-Joule ─── SPINE -->
+        <article data-page="m9/energy-tokens-per-joule"></article>
+
+        <article data-page="m9/power-energy-optimization"></article>
+
+        <article data-page="m9/cost-energy-scheduling"></article>
+
+        <article data-page="m9/designing-cost-energy-stack"></article>
+
+        <!-- chapter prev/next nav (filled by JS) -->
         <div id="chapter-nav" class="chapter-nav"></div>
       </main>
 
-      <!-- ──────────────── right sidebar (on-page TOC) ──────────────── -->
+      <!-- ──────────────── RIGHT SIDEBAR (on-page TOC) ──────────────── -->
       <aside class="sidebar-right">
         <h4 id="page-toc-title" class="toc-title">On this page</h4>
         <nav id="page-toc" class="toc"></nav>

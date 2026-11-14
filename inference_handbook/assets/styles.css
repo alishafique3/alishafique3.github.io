@@ -4,6 +4,7 @@
    ========================================================================== */
 
 :root {
+  /* Light theme (default) */
   --color-background: #ffffff;
   --color-surface: #f6f6f8;
   --color-surface-elevated: #ffffff;
@@ -25,6 +26,64 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --container-max: 1440px;
+
+  /* Code block (light — pure white) */
+  --code-bg: #ffffff;
+  --code-text: #24292f;
+  --code-border: #d0d7de;
+  --code-label: #6e7781;
+  --code-scrollbar-thumb: #afb8c1;
+  --code-scrollbar-thumb-hover: #6e7781;
+  --code-shadow: 0 1px 2px rgba(10, 10, 15, 0.04);
+
+  /* Prism tokens (light — GitHub Primer-ish) */
+  --token-comment: #6e7781;
+  --token-string:  #0a3069;
+  --token-keyword: #cf222e;
+  --token-fn:      #8250df;
+  --token-number:  #0550ae;
+  --token-op:      #24292f;
+
+  --gh-pill-bg: var(--color-background);
+}
+
+[data-theme="dark"] {
+  --color-background: #0b0c10;
+  --color-surface: #16171d;
+  --color-surface-elevated: #1a1b22;
+  --color-surface-hover: #21222a;
+
+  --color-border-subtle: rgba(255, 255, 255, 0.09);
+  --color-border-hover: rgba(255, 255, 255, 0.2);
+
+  --color-text-primary: #f5f6f7;
+  --color-text-secondary: #9aa1ac;
+  --color-text-tertiary: #6c6f78;
+
+  --color-accent-blue: #818cf8;
+  --color-accent-blue-light: #a5b4fc;
+  --color-accent-purple: #c084fc;
+
+  --gradient-text: linear-gradient(135deg, #93a0ff 0%, #c084fc 50%, #4fd9ff 100%);
+
+  /* Code block (dark — dim background, high-contrast tokens from One Dark) */
+  --code-bg: #282c34;
+  --code-text: #e5e5e5;
+  --code-border: #3e4451;
+  --code-label: #7f848e;
+  --code-scrollbar-thumb: #3e4451;
+  --code-scrollbar-thumb-hover: #5c6370;
+  --code-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+
+  /* Prism tokens (dark — One Dark palette, high contrast and readable) */
+  --token-comment: #7f848e;
+  --token-string:  #98c379;
+  --token-keyword: #c678dd;
+  --token-fn:      #61afef;
+  --token-number:  #d19a66;
+  --token-op:      #e5e5e5;
+
+  --gh-pill-bg: var(--color-surface-elevated);
 }
 
 * { box-sizing: border-box; }
@@ -45,14 +104,49 @@ body {
 a { color: inherit; text-decoration: none; }
 
 /* -------------------------------------------------------------------------- */
-/*   GitHub pill (same look as the tools)                                     */
+/*   Top-right actions — theme toggle + GitHub pill                           */
 /* -------------------------------------------------------------------------- */
 
-.gh-link {
+.top-actions {
   position: absolute;
   top: 24px;
   right: 24px;
   z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--gh-pill-bg);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.theme-toggle:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+  background: var(--color-surface);
+}
+
+.theme-toggle svg { display: block; width: 16px; height: 16px; }
+
+.theme-toggle .icon-sun  { display: none; }
+.theme-toggle .icon-moon { display: block; }
+
+[data-theme="dark"] .theme-toggle .icon-sun  { display: block; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+.gh-link {
   color: var(--color-text-secondary);
   display: inline-flex;
   align-items: center;
@@ -62,7 +156,7 @@ a { color: inherit; text-decoration: none; }
   border-radius: 999px;
   font-size: 13px;
   font-weight: 500;
-  background: var(--color-background);
+  background: var(--gh-pill-bg);
   transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
   text-decoration: none;
 }
@@ -95,14 +189,14 @@ a { color: inherit; text-decoration: none; }
 
 @media (min-width: 1024px) {
   .handbook-layout {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 250px 1fr;
     gap: 2.5rem;
   }
 }
 
 @media (min-width: 1280px) {
   .handbook-layout {
-    grid-template-columns: 220px 1fr 220px;
+    grid-template-columns: 250px 1fr 250px;
   }
 }
 
@@ -131,8 +225,12 @@ a { color: inherit; text-decoration: none; }
 .module-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.875rem;
+  gap: 0.125rem;
+  font-size: 0.8125rem;
+}
+
+.module-nav .module-head + .chapter-list + .module-head {
+  margin-top: 0.5rem;
 }
 
 .module-link,
@@ -140,13 +238,14 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.625rem;
   border-radius: 0.375rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  font-weight: 600;
+  color: var(--color-text-primary);
   cursor: pointer;
   transition: color 160ms ease, background-color 160ms ease;
   user-select: none;
+  line-height: 1.3;
 }
 
 .module-link:hover,
@@ -178,12 +277,13 @@ a { color: inherit; text-decoration: none; }
 .module-head.is-active + .chapter-list { display: flex; }
 
 .chapter-link {
-  padding: 0.375rem 0.75rem;
+  padding: 0.3rem 0.625rem;
   border-radius: 0.375rem;
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
   color: var(--color-text-secondary);
   transition: color 160ms ease, background-color 160ms ease;
   cursor: pointer;
+  line-height: 1.35;
 }
 
 .chapter-link:hover {
@@ -214,6 +314,15 @@ a { color: inherit; text-decoration: none; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+.content .chapter-meta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-accent-blue);
+  margin-bottom: 0.75rem;
+}
+
 .content h1 {
   font-size: clamp(2rem, 4vw, 2.75rem);
   font-weight: 600;
@@ -222,6 +331,17 @@ a { color: inherit; text-decoration: none; }
   margin: 0 0 1.5rem;
   color: var(--color-text-primary);
 }
+
+.content .lede {
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--color-text-primary);
+  margin: 0 0 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.content .lede em { color: var(--color-text-secondary); }
+.content .lede strong { color: var(--color-accent-blue); }
 
 .content h2 {
   font-size: 1.5rem;
@@ -289,6 +409,49 @@ a { color: inherit; text-decoration: none; }
   margin: 2.5rem 0;
 }
 
+/* FAQ section — questions as h3 with a subtle Q marker */
+.content .faq h3 {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.content .faq h3::before {
+  content: "Q.";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--color-accent-blue);
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+}
+
+.content .faq p {
+  padding-left: 1.5rem;
+  margin-top: 0.25rem;
+}
+
+/* References list — small, muted, one line per entry */
+.content .refs {
+  font-size: 0.875rem;
+  padding-left: 1.25rem;
+  color: var(--color-text-secondary);
+}
+.content .refs li { margin: 0.25rem 0; }
+.content .refs a { border-bottom: 1px dotted rgba(79, 70, 229, 0.35); }
+
+/* MathJax display-math spacing + overflow safety */
+.content mjx-container[display="true"] {
+  margin: 1rem 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 /* -------- code blocks -------- */
 
 .content pre,
@@ -308,35 +471,152 @@ a { color: inherit; text-decoration: none; }
   color: var(--color-text-primary);
 }
 
+/* Code block — themed (light/dark via CSS variables).
+   Minimal corner lang label + copy button, horizontal scroll for overflow. */
 .content pre {
-  background: #0d0f13;
-  color: #e4e6eb;
-  padding: 1rem 1.25rem;
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 0.875rem 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
-  margin: 1.25rem 0;
-  line-height: 1.6;
+  margin: 1.5rem 0;
+  line-height: 1.55;
   position: relative;
-  border: 1px solid #1c1f25;
+  border: 1px solid var(--code-border);
+  box-shadow: var(--code-shadow);
+  font-size: 0.8125rem;
+  tab-size: 2;
+  font-feature-settings: "liga" 0;
 }
 
+/* visible, minimal scrollbar */
+.content pre::-webkit-scrollbar { height: 8px; }
+.content pre::-webkit-scrollbar-track { background: transparent; }
+.content pre::-webkit-scrollbar-thumb {
+  background: var(--code-scrollbar-thumb);
+  border-radius: 4px;
+}
+.content pre::-webkit-scrollbar-thumb:hover { background: var(--code-scrollbar-thumb-hover); }
+
+/* Subtle lang label in top-right */
 .content pre .lang-label {
   position: absolute;
   top: 0.5rem;
-  right: 0.75rem;
+  right: 2.75rem;                 /* leave room for the copy button */
+  font-family: var(--font-mono);
   font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #7a8294;
+  font-weight: 500;
+  color: var(--code-label);
   pointer-events: none;
+  user-select: none;
+  z-index: 2;
+}
+
+/* Copy button on code blocks */
+.content pre .copy-btn {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.3rem;
+  color: var(--code-label);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.content pre:hover .copy-btn,
+.content pre .copy-btn:focus { opacity: 1; }
+
+.content pre .copy-btn:hover {
+  background: rgba(127, 127, 127, 0.12);
+  border-color: var(--code-border);
+  color: var(--code-text);
+}
+
+.content pre .copy-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* Hide the "Copy" text — icon-only button, cleaner look */
+.content pre .copy-btn .copy-btn-label { display: none; }
+
+.content pre .copy-btn.is-copied {
+  color: #2da44e;
+  opacity: 1;
+}
+
+/* On touch devices, always show the copy button */
+@media (hover: none) {
+  .content pre .copy-btn { opacity: 0.6; }
+}
+
+/* Prism token overrides — use CSS vars so they flip with theme.
+   !important to beat Prism-tomorrow's defaults loaded from CDN. */
+.content pre code .token.comment,
+.content pre code .token.prolog,
+.content pre code .token.doctype,
+.content pre code .token.cdata {
+  color: var(--token-comment) !important;
+  font-style: italic;
+}
+
+.content pre code .token.string,
+.content pre code .token.attr-value,
+.content pre code .token.triple-quoted-string,
+.content pre code .token.char,
+.content pre code .token.inserted {
+  color: var(--token-string) !important;
+}
+
+.content pre code .token.keyword,
+.content pre code .token.boolean,
+.content pre code .token.selector,
+.content pre code .token.important,
+.content pre code .token.atrule {
+  color: var(--token-keyword) !important;
+}
+
+.content pre code .token.builtin,
+.content pre code .token.function,
+.content pre code .token.class-name,
+.content pre code .token.tag,
+.content pre code .token.decorator {
+  color: var(--token-fn) !important;
+}
+
+.content pre code .token.number,
+.content pre code .token.symbol {
+  color: var(--token-number) !important;
+}
+
+.content pre code .token.operator,
+.content pre code .token.punctuation,
+.content pre code .token.attr-name,
+.content pre code .token.entity,
+.content pre code .token.url,
+.content pre code .token.variable {
+  color: var(--token-op) !important;
 }
 
 .content pre code {
-  background: transparent;
-  border: none;
-  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
   color: inherit;
   display: block;
+  font-size: inherit;
+  text-shadow: none !important;
 }
 
 /* -------- tables -------- */
@@ -381,6 +661,49 @@ a { color: inherit; text-decoration: none; }
 }
 
 .callout p { margin: 0; font-size: 0.9375rem; }
+
+/* -------- Coming-soon placeholder card -------- */
+
+.coming-soon {
+  border: 1px dashed var(--color-border-hover);
+  background: linear-gradient(135deg,
+    rgba(79, 70, 229, 0.04) 0%,
+    rgba(147, 51, 234, 0.04) 100%);
+  border-radius: 0.75rem;
+  padding: 1.5rem 1.5rem;
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.coming-soon .tag {
+  display: inline-block;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-blue);
+  background: rgba(79, 70, 229, 0.08);
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.coming-soon .title {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0.25rem 0;
+  font-size: 1rem;
+}
+
+.coming-soon .desc {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0;
+  max-width: 48rem;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
 
 /* -------- interactive widget: Token Decode Visualization -------- */
 
